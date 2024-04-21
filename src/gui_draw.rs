@@ -1,20 +1,22 @@
+use crate::db::{filter_by_format, filter_by_rating, filter_by_release, filter_by_title};
 use crate::gui_events::{get_all, get_all_movie_details, get_pool, handle_init, ToGui};
-use crate::record::Record;
-use crate::{actorlist_to_string, parse_result, string_to_shared_string};
+
+use crate::{actorlist_to_string, parse_movie_list, parse_result, string_to_shared_string};
 use once_cell::sync::Lazy;
 use slint;
 use slint::spawn_local;
 use slint::SharedString;
-use sqlx::MySqlPool;
+use sqlx::{pool, MySqlPool};
 use std::sync::Mutex;
 // Shared state
 static POOL: Lazy<Mutex<Option<MySqlPool>>> = Lazy::new(|| Mutex::new(None));
 
 slint::slint! {
-    import { Button, ListView, ScrollView, GridBox, Slider, ComboBox} from "std-widgets.slint";
+    import { Button, ListView, ScrollView, GridBox, Slider, ComboBox, CheckBox, Switch} from "std-widgets.slint";
     export component MainGui inherits Window{
         InitButtonVisible: true;
         AllOtherVisible: true;
+        MovieThumbnailPath: "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.imdb.com%2Ftitle%2Ftt0111161%2F&psig=AOvVaw3";
         //size of the window
         width: 800px;
         height: 800px;
@@ -22,7 +24,9 @@ slint::slint! {
         in property <[string]> MoiveList;
         in property <bool> InitButtonVisible;
         in property <bool> AllOtherVisible;
+        out property <bool> ResetVisible;
         in property <string> MovieTitleIN;
+        in property <string> MovieThumbnailPath;
         in property <string> Format;
         in property <string> Description;
         in property <string> Cast;
@@ -36,7 +40,7 @@ slint::slint! {
             height: 30px;
             width: 106px;
             visible: AllOtherVisible;
-            model: ["Filter-by", "Movie-Name", "Release-Date", "Format", "Description", "Actor-Name"];
+            model: ["Filter-by", "Movie-Name", "Release-Date", "Format", "Rating", "Actor-Name"];
             x: 1px;
             y: 0px;
             selected => {
@@ -63,6 +67,7 @@ slint::slint! {
             clicked => {
                 eventOccured();
                 Event = "SearchButtonClicked";
+                ResetVisible = true;
             }
         }
         Rectangle {
@@ -90,7 +95,7 @@ slint::slint! {
 
                 }
             }
-        }
+}
         TextInput {
             x: 87px;
             y: -44px;
@@ -131,7 +136,7 @@ slint::slint! {
             width: 253px;
             height: 41px;
             x: 287px;
-            y: 186px;
+            y: 183px;
         }
         Rectangle {
             Text {
@@ -141,7 +146,7 @@ slint::slint! {
                 height: 31px;
                 font-size: 20px;
             }
-            width: 259px;
+            width: 251px;
             height: 31px;
             border-radius: 5px;
             border-width: 1px;
@@ -156,13 +161,13 @@ slint::slint! {
                 x: 0px;
                 y: 0px;
                 height: 141px;
-                font-size: 532px;
+                font-size: 20px;
             }
             border-radius: 5px;
             border-width: 1px;
             border-color: #000;
             visible: AllOtherVisible;
-            width: 532px;
+            width: 506px;
             height: 141px;
             x: 286px;
             y: 284px;
@@ -179,7 +184,7 @@ slint::slint! {
             border-width: 1px;
             border-color: #000;
             visible: AllOtherVisible;
-            width: 532px;
+            width: 509px;
             height: 141px;
             x: 284px;
             y: 433px;
@@ -196,36 +201,72 @@ slint::slint! {
             border-width: 1px;
             border-color: #000;
             visible: AllOtherVisible;
-            width: 532px;
+            width: 510px;
             height: 141px;
             x: 283px;
             y: 578px;
         }
-    }
+            Button {
+            text: "+Add Movie";
+            visible: AllOtherVisible;
+            x: 700px;
+            y: 2px;
+            clicked => {
+                eventOccured();
+                Event = "AddMovieClicked";
+            }
+        }
+
+        Button {
+            text: "Reset";
+            x: 535px;
+            y: -1px;
+            visible: ResetVisible;
+            clicked => {
+                eventOccured();
+                Event = "ResetButtonClicked";
+                if Filter != "Filter-by"{
+                    ResetVisible = false;
+                }
+            }
+        }
+
+}
 }
 
 pub async fn init() {
     let app = MainGui::new().unwrap();
-    gui_loop(app).await;
+    let pool = get_pool().await;
+    gui_loop(app, pool.unwrap()).await;
 }
 
-async fn gui_loop(app: MainGui) {
-    let weakApp = app.as_weak();
+async fn gui_loop(app: MainGui, pool: MySqlPool) {
+    let weak_app = app.as_weak();
+    let weak_pool = pool.clone();
     app.on_eventOccured(move || {
-        let app = weakApp.upgrade().unwrap();
+        let app = weak_app.upgrade().unwrap();
+        let pool = weak_pool.clone();
         let _ = spawn_local(async move {
             let event = app.get_Event();
             match event.as_str() {
-                "InitButtonClicked" => init_button_clicked(app).await,
+                "InitButtonClicked" => init_button_clicked(app, pool).await,
                 "SearchButtonClicked" => {
                     let filter = &app.get_Filter();
                     let search_term = app.get_SearchTerm();
-                    search_by_filters(filter.to_string(), search_term.to_string(), app).await;
+                    search_by_filters(filter.to_string(), search_term.to_string(), app, pool).await;
                 }
                 "MovieSelected" => {
                     print!("Movie selected");
                     let movie_title = app.get_MovieTitleOUT();
-                    get_movie_details(app, movie_title).await;
+                    get_movie_details(app, movie_title, pool).await;
+                }
+                "ResetButtonClicked" => {
+                    let movie_list = filter_by_title(&pool, "".to_string()).await;
+                    let model = parse_movie_list(movie_list);
+                    app.set_MoiveList(model);
+                }
+                "AddMovieClicked" => {
+                    println!("Add movie clicked");
                 }
                 _ => {}
             }
@@ -234,27 +275,32 @@ async fn gui_loop(app: MainGui) {
     app.run().unwrap();
 }
 
-async fn init_button_clicked(app: MainGui) {
-    let mut result = handle_init().await;
+async fn init_button_clicked(app: MainGui, pool: MySqlPool) {
     app.set_InitButtonVisible(false);
     app.set_AllOtherVisible(true);
-
-    println!("Result: {}", result.result.pop().unwrap());
-    populate_movie_list(app, result).await;
+    populate_movie_list(app, pool).await;
 }
-async fn search_by_filters(filter: String, search_term: String, app: MainGui) {
+
+async fn search_by_filters(filter: String, search_term: String, app: MainGui, pool: MySqlPool) {
     match filter.as_str() {
         "Movie-Name" => {
-            println!("Searching by movie name, {}", search_term);
+            let movie_list = filter_by_title(&pool, search_term).await;
+            let model = parse_movie_list(movie_list);
+            app.set_MoiveList(model);
         }
         "Release-Date" => {
-            println!("Searching by release date, {}", search_term);
+            let search_term_int = search_term.parse::<i32>().unwrap(); // Convert search_term to i32
+            let movie_list = filter_by_release(&pool, search_term_int).await;
+            let model = parse_movie_list(movie_list);
+            app.set_MoiveList(model);
         }
         "Format" => {
-            println!("Searching by format, {}", search_term);
+            let movie_list = filter_by_format(&pool, search_term).await;
+            let model = parse_movie_list(movie_list);
+            app.set_MoiveList(model);
         }
-        "Description" => {
-            println!("Searching by description, {}", search_term);
+        "Rating" => {
+            println!("Searching by rating, {}", search_term);
         }
         "Actor-Name" => {
             println!("Searching by actor name, {}", search_term);
@@ -265,39 +311,31 @@ async fn search_by_filters(filter: String, search_term: String, app: MainGui) {
     }
 }
 
-pub async fn get_movie_details(app: MainGui, movie_title: SharedString) {
+pub async fn get_movie_details(app: MainGui, movie_title: SharedString, pool: MySqlPool) {
     println!("Getting Details");
     //get movie detai
-    let pool_guard = get_pool().await;
-    if let Some(ref actual_pool) = pool_guard {
-        let result = get_all_movie_details(actual_pool, movie_title.to_string()).await;
-        //display movie details
-        app.set_MovieTitleIN(string_to_shared_string(
-            result.MovieData[0].title.clone().unwrap(),
-        ));
-        app.set_Format(string_to_shared_string(
-            result.MovieData[0].format.clone().unwrap(),
-        ));
-        app.set_Description(string_to_shared_string(
-            result.MovieData[0].description.clone().unwrap(),
-        ));
-        app.set_Cast(string_to_shared_string(actorlist_to_string(
-            result.ActorData.clone(),
-        )));
-        println!("{}", actorlist_to_string(result.ActorData.clone()));
-        app.set_Review(string_to_shared_string(
-            result.ReviewData[0].aggregate.clone().unwrap().to_string(),
-        ));
-    } else {
-        println!("No pool found");
-        return;
-    }
+    let result = get_all_movie_details(&pool, movie_title.to_string()).await;
+    //display movie details
+    app.set_MovieTitleIN(string_to_shared_string(
+        result.MovieData[0].title.clone().unwrap(),
+    ));
+    app.set_Format(string_to_shared_string(
+        result.MovieData[0].format.clone().unwrap(),
+    ));
+    app.set_Description(string_to_shared_string(
+        result.MovieData[0].description.clone().unwrap(),
+    ));
+    app.set_Cast(string_to_shared_string(actorlist_to_string(
+        result.ActorData.clone(),
+    )));
+    println!("{}", actorlist_to_string(result.ActorData.clone()));
+    app.set_Review(string_to_shared_string(
+        result.ReviewData[0].aggregate.clone().unwrap().to_string(),
+    ));
 }
 
-async fn populate_movie_list(app: MainGui, mut result: ToGui) {
-    result = get_all(&result.pool.unwrap()).await;
-    let mut pool = POOL.lock().unwrap();
-    *pool = result.pool.clone();
+async fn populate_movie_list(app: MainGui, pool: MySqlPool) {
+    let result = get_all(&pool).await;
     let model = parse_result(result);
     app.set_MoiveList(model);
-} //print all movies to console
+}

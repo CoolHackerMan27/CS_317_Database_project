@@ -4,8 +4,13 @@ pub mod gui_events;
 pub mod record;
 
 use gui_events::ToGui;
-use slint::{ModelRc, VecModel};
-use std::io::{self, Write};
+use record::Record;
+use slint::{ModelRc, SharedString, VecModel};
+use std::{
+    fmt::Error,
+    io::{self, Write},
+    slice::SliceIndex,
+};
 
 pub fn string_to_shared_string(string: String) -> slint::SharedString {
     slint::SharedString::from(string)
@@ -52,6 +57,27 @@ pub fn parse_result(result: ToGui) -> ModelRc<slint::SharedString> {
     }
     let model = slint::ModelRc::new(VecModel::from(shared_string));
     return model;
+}
+
+pub fn parse_movie_list(
+    movie_list: Result<Vec<Record>, sqlx::Error>,
+) -> ModelRc<slint::SharedString> {
+    if let record = movie_list.unwrap() {
+        let mut vec = Vec::new();
+        for movie in record.iter() {
+            let movie_string = format!("{}", movie.title.as_ref().unwrap(),);
+            vec.push(to_shared_string(movie_string));
+        }
+        slint::ModelRc::new(VecModel::from(vec))
+    } else {
+        println!("Query Error");
+        //return error in model
+        slint::ModelRc::new(VecModel::from(vec!["Query Error".into()]))
+    }
+}
+
+fn to_shared_string(input: String) -> SharedString {
+    input.into()
 }
 
 fn clean_result(result: ToGui) -> Vec<String> {

@@ -2,9 +2,9 @@ use crate::record::CastMovieRecord;
 use crate::record::MicroReview;
 use crate::record::Record;
 use crate::record::Review;
-use chrono::NaiveDate;
+
 use sqlx;
-use sqlx::mysql::MySqlRow;
+
 use sqlx::MySqlPool;
 use sqlx::Row;
 

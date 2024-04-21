@@ -1,6 +1,4 @@
-use std::result;
-
-use sqlx::{pool, MySqlPool};
+use sqlx::MySqlPool;
 
 use crate::db::establish_connection;
 use crate::db::filter_by_title;
@@ -8,7 +6,6 @@ use crate::db::get_all as get_all_records;
 use crate::db::get_cast_from_movieID;
 use crate::db::get_reviews_from_movieID;
 use crate::record;
-use crate::record::MicroReview;
 
 #[derive(Clone)]
 pub struct ToGui {
@@ -67,7 +64,7 @@ pub async fn get_all_movie_details(pool: &MySqlPool, movie_title: String) -> ToG
             result.result.push(format!("Error: {}", e));
         }
     }
-    match get_reviews_from_movieID(pool, result.MovieData[0].movieId.unwrap()).await {
+    match get_reviews_from_movieID(pool, result.MovieData.get(0).unwrap().movieId.unwrap()).await {
         Ok(records) => {
             result.ReviewData = records;
         }
@@ -75,7 +72,7 @@ pub async fn get_all_movie_details(pool: &MySqlPool, movie_title: String) -> ToG
             result.result.push(format!("Error: {}", e));
         }
     }
-    match get_cast_from_movieID(pool, result.MovieData[0].movieId.unwrap()).await {
+    match get_cast_from_movieID(pool, result.MovieData.get(0).unwrap().movieId.unwrap()).await {
         Ok(records) => {
             result.ActorData = records;
         }
