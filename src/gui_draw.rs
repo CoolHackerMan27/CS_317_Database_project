@@ -14,15 +14,24 @@ slint::slint! {
     import { Button, ListView, ScrollView, GridBox, Slider, ComboBox} from "std-widgets.slint";
     export component MainGui inherits Window{
         InitButtonVisible: true;
-        AllOtherVisible: false;
+        AllOtherVisible: true;
+        //size of the window
+        width: 800px;
+        height: 800px;
         title: "Movie Database";
         in property <[string]> MoiveList;
         in property <bool> InitButtonVisible;
         in property <bool> AllOtherVisible;
-                root.eventOccured();
-                Event = "SearchTermEdited";
-            }
-        }
+        in property <string> MovieTitleIN;
+        in property <string> Format;
+        in property <string> Description;
+        in property <string> Cast;
+        in property <string> Review;
+        out property <string> Filter;
+        out property <string> SearchTerm;
+        callback eventOccured();
+        out property <string> Event;
+        out property <string> MovieTitleOUT;
         ComboBox {
             height: 30px;
             width: 106px;
@@ -33,6 +42,17 @@ slint::slint! {
             selected => {
                 root.eventOccured();
                 Event = "FilterSelected";
+                Filter = self.current-value;
+            }
+        }
+        Button {
+            text: "Connect to Database";
+            x: 400px;
+            y: 400px;
+            visible: InitButtonVisible;
+            clicked => {
+                eventOccured();
+                Event = "InitButtonClicked";
             }
         }
         Button {
@@ -55,9 +75,10 @@ slint::slint! {
             border-width: 1px;
             border-color: #000;
             ListView {
-                x: 21px;
-                y: 34px;
-                width: 236px;
+                height: 665px;
+                x: 13px;
+                y: 8px;
+                width: 234px;
                 for data in MoiveList: Button {
                     width: 250px; // specify the width of the button
                     height: 50px; // specify the height of the button
@@ -70,7 +91,20 @@ slint::slint! {
                 }
             }
         }
-    }
+        TextInput {
+            x: 87px;
+            y: -44px;
+            width: 347px;
+            height: 29px;
+            text: "Seach";
+            visible: AllOtherVisible;
+            edited => {
+                eventOccured();
+                Event = "SearchTermEntered";
+                SearchTerm = self.text;
+            }
+        }
+}
 
         Rectangle {
             visible: AllOtherVisible;
@@ -87,7 +121,7 @@ slint::slint! {
                 text: MovieTitleIN;
                 x: 0px;
                 y: 0px;
-                height: 31px;
+                height: 41px;
                 font-size: 20px;
             }
             visible: AllOtherVisible;
@@ -121,8 +155,8 @@ slint::slint! {
                 text: Description;
                 x: 0px;
                 y: 0px;
-                height: 31px;
-                font-size: 20px;
+                height: 141px;
+                font-size: 532px;
             }
             border-radius: 5px;
             border-width: 1px;
@@ -138,7 +172,7 @@ slint::slint! {
                 text: Cast;
                 x: 0px;
                 y: 0px;
-                height: 31px;
+                height: 141px;
                 font-size: 20px;
             }
             border-radius: 5px;
@@ -155,7 +189,7 @@ slint::slint! {
                 text: Review;
                 x: 0px;
                 y: 0px;
-                height: 31px;
+                height: 141px;
                 font-size: 20px;
             }
             border-radius: 5px;
@@ -167,8 +201,7 @@ slint::slint! {
             x: 283px;
             y: 578px;
         }
-}
-
+    }
 }
 
 pub async fn init() {
@@ -185,10 +218,9 @@ async fn gui_loop(app: MainGui) {
             match event.as_str() {
                 "InitButtonClicked" => init_button_clicked(app).await,
                 "SearchButtonClicked" => {
-                    print!("Search button clicked")
-                }
-                "FilterSelected" => {
-                    print!("Filter selected")
+                    let filter = &app.get_Filter();
+                    let search_term = app.get_SearchTerm();
+                    search_by_filters(filter.to_string(), search_term.to_string(), app).await;
                 }
                 "MovieSelected" => {
                     print!("Movie selected");
@@ -210,6 +242,28 @@ async fn init_button_clicked(app: MainGui) {
     println!("Result: {}", result.result.pop().unwrap());
     populate_movie_list(app, result).await;
 }
+async fn search_by_filters(filter: String, search_term: String, app: MainGui) {
+    match filter.as_str() {
+        "Movie-Name" => {
+            println!("Searching by movie name, {}", search_term);
+        }
+        "Release-Date" => {
+            println!("Searching by release date, {}", search_term);
+        }
+        "Format" => {
+            println!("Searching by format, {}", search_term);
+        }
+        "Description" => {
+            println!("Searching by description, {}", search_term);
+        }
+        "Actor-Name" => {
+            println!("Searching by actor name, {}", search_term);
+        }
+        _ => {
+            println!("Invalid filter, {}", filter);
+        }
+    }
+}
 
 pub async fn get_movie_details(app: MainGui, movie_title: SharedString) {
     println!("Getting Details");
@@ -230,6 +284,10 @@ pub async fn get_movie_details(app: MainGui, movie_title: SharedString) {
         app.set_Cast(string_to_shared_string(actorlist_to_string(
             result.ActorData.clone(),
         )));
+        println!("{}", actorlist_to_string(result.ActorData.clone()));
+        app.set_Review(string_to_shared_string(
+            result.ReviewData[0].aggregate.clone().unwrap().to_string(),
+        ));
     } else {
         println!("No pool found");
         return;

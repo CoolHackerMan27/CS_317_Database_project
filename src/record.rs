@@ -20,11 +20,17 @@ pub struct CastMovieRecord {
 pub struct Review {
     pub reviewID: Option<i32>,
     pub aggregate: Option<i32>,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub format: Option<String>,
+    pub releaseDate: Option<i32>,
     pub sub_review_num: Option<i32>,
     pub movieId: Option<i32>,
-    pub title: Option<String>,
-    pub releaseDate: Option<i32>,
-    // pub genre: Option<String>,
-    pub format: Option<String>,
-    pub description: Option<String>,
+}
+#[derive(sqlx::FromRow, Clone)]
+pub struct MicroReview {
+    pub reviewID: Option<i32>,
+    pub aggregate: Option<i32>,
+    pub sub_review_num: Option<i32>,
+    pub movieId: Option<i32>,
 }

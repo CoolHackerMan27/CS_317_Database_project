@@ -8,12 +8,14 @@ use crate::db::get_all as get_all_records;
 use crate::db::get_cast_from_movieID;
 use crate::db::get_reviews_from_movieID;
 use crate::record;
+use crate::record::MicroReview;
 
 #[derive(Clone)]
 pub struct ToGui {
     pub MovieData: Vec<record::Record>,
     pub ActorData: Vec<record::CastMovieRecord>,
     pub ReviewData: Vec<record::Review>,
+    pub MicroReviewData: Vec<record::MicroReview>,
     pub result: Vec<String>,
     pub pool: Option<MySqlPool>,
 }
@@ -33,6 +35,7 @@ pub async fn handle_init() -> ToGui {
         MovieData: Vec::new(),
         ActorData: Vec::new(),
         ReviewData: Vec::new(),
+        MicroReviewData: Vec::new(),
     };
 
     match establish_connection().await {
@@ -54,6 +57,7 @@ pub async fn get_all_movie_details(pool: &MySqlPool, movie_title: String) -> ToG
         MovieData: Vec::new(),
         ActorData: Vec::new(),
         ReviewData: Vec::new(),
+        MicroReviewData: Vec::new(),
     };
     match filter_by_title(pool, movie_title).await {
         Ok(records) => {
@@ -89,6 +93,7 @@ pub async fn get_all(pool: &MySqlPool) -> ToGui {
         MovieData: Vec::new(),
         ActorData: Vec::new(),
         ReviewData: Vec::new(),
+        MicroReviewData: Vec::new(),
     };
     match get_all_records(pool).await {
         Ok(records) => {

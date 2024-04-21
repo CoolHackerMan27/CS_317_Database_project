@@ -1,17 +1,19 @@
-use crate::get_user_input;
-use crate::get_user_input_i32;
 use crate::record::CastMovieRecord;
+use crate::record::MicroReview;
 use crate::record::Record;
 use crate::record::Review;
+use chrono::NaiveDate;
 use sqlx;
-use sqlx::pool;
+use sqlx::mysql::MySqlRow;
 use sqlx::MySqlPool;
+use sqlx::Row;
 
 //Enum to contain Structs from SQL Query - Kinda clunky
 pub enum QueryResults {
     Movies(Vec<Record>),
     Cast(Vec<CastMovieRecord>),
     Review(Vec<Review>),
+    MicroReview(Vec<MicroReview>),
 }
 
 pub async fn establish_connection() -> Result<MySqlPool, sqlx::Error> {
@@ -34,8 +36,8 @@ pub async fn get_cast_from_movieID(
     let records: Vec<CastMovieRecord> = sqlx::query_as!(
         CastMovieRecord,
         "SELECT c.movieId, m.title AS movie_title, c.name AS actor_name, c.age AS actor_age, c.role AS actor_role
-        FROM castmembers c
-        JOIN movie m ON m.movieId = c.movieId
+        FROM CastMembers c
+        JOIN Movie m ON m.movieId = c.movieId
         WHERE c.movieId = ?",
         movie_id
     )
@@ -50,7 +52,7 @@ pub async fn get_reviews_from_movieID(
 ) -> Result<Vec<Review>, sqlx::Error> {
     let records: Vec<Review> = sqlx::query_as!(
         Review,
-        "SELECT * FROM Movie NATURAL JOIN review WHERE movieId = ?",
+        "SELECT * FROM Movie NATURAL JOIN Review WHERE movieId = ?",
         movie_id
     )
     .fetch_all(pool)
@@ -77,8 +79,8 @@ async fn filter_by_actor(
     let records = sqlx::query_as!(
         CastMovieRecord,
         "SELECT c.movieId, m.title AS movie_title, c.name AS actor_name, c.age AS actor_age, c.role AS actor_role
-        FROM castmembers c
-        JOIN movie m ON m.movieId = c.movieId
+        FROM CastMembers c
+        JOIN Movie m ON m.movieId = c.movieId
         WHERE c.name = ?",
         name
     ).fetch_all(pool).await?;
@@ -105,11 +107,17 @@ pub async fn filter_by_format(
     Ok(records)
 }
 
-pub async fn filter_by_rating(pool: &MySqlPool, rating: i32) -> Result<Vec<Review>, sqlx::Error> {
-    let records: Vec<Review> =
-        sqlx::query_as!(Review, "SELECT * FROM Review WHERE rating = ?", rating)
-            .fetch_all(pool)
-            .await?;
+pub async fn filter_by_rating(
+    pool: &MySqlPool,
+    rating: i32,
+) -> Result<Vec<MicroReview>, sqlx::Error> {
+    let records: Vec<MicroReview> = sqlx::query_as!(
+        MicroReview,
+        "SELECT * FROM Review WHERE aggregate = ?",
+        rating
+    )
+    .fetch_all(pool)
+    .await?;
 
     Ok(records)
 }
