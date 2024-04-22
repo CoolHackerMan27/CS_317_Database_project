@@ -20,9 +20,8 @@ pub enum QueryResults {
 }
 
 pub async fn establish_connection() -> Result<MySqlPool, sqlx::Error> {
-    let database_url =
-        "mariadb://root:root@localhost:3306/movies?auth_plugin=mysql_native_password";
-    MySqlPool::connect(database_url).await
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    MySqlPool::connect(&database_url).await
 }
 
 pub async fn get_all(pool: &MySqlPool) -> Result<Vec<Record>, sqlx::Error> {
@@ -145,7 +144,7 @@ pub async fn get_sub_reviews_from_reviewID(
 ) -> Result<Vec<SubReview>, sqlx::Error> {
     let records: Vec<SubReview> = sqlx::query_as!(
         SubReview,
-        "SELECT * FROM sub_review WHERE reviewID = ?",
+        "SELECT * FROM Sub_Review WHERE reviewID = ?",
         review_id
     )
     .fetch_all(pool)

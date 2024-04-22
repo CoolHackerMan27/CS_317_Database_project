@@ -585,7 +585,15 @@ slint::slint! {
 pub async fn init() {
     let app = MainGui::new().unwrap();
     let pool = get_pool().await;
-    gui_loop(app, pool.unwrap()).await;
+    if pool.is_none() {
+        //Exit on no pool found
+        print!("Error: No pool found\n Exiting...");
+        return;
+    } else {
+        app.set_InitButtonVisible(false);
+        app.set_AllOtherVisible(true);
+        gui_loop(app, pool.unwrap()).await;
+    }
 }
 
 async fn gui_loop(app: MainGui, pool: MySqlPool) {
