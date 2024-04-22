@@ -5,7 +5,7 @@ pub mod record;
 
 use gui_events::ToGui;
 use record::{MovieList, Record};
-use slint::{ModelRc, SharedString, VecModel};
+use slint::{Model, ModelRc, SharedString, VecModel};
 use std::{
     fmt::Error,
     io::{self, Write},
@@ -16,7 +16,13 @@ pub fn string_to_shared_string(string: String) -> slint::SharedString {
     slint::SharedString::from(string)
 }
 
-pub enum Query {}
+pub fn model_rc_to_string(input: ModelRc<slint::SharedString>) -> String {
+    let mut string = String::new();
+    for item in input.iter() {
+        string.push_str(&format!("{}\n", item));
+    }
+    string
+}
 
 pub fn actorlist_to_string(actorlist: Vec<record::CastMovieRecord>) -> String {
     let mut actor_string = String::new();
