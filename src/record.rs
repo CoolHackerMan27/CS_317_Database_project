@@ -34,3 +34,22 @@ pub struct MicroReview {
     pub sub_review_num: Option<i32>,
     pub movieId: Option<i32>,
 }
+#[derive(sqlx::FromRow, Clone)]
+pub struct SubReview {
+    pub reviewID: Option<i32>,
+    pub subreviewID: Option<i32>,
+    pub sub_review_score: Option<i32>,
+    pub sub_review_title: Option<String>,
+    pub sub_review_desc: Option<String>,
+}
+
+#[derive(sqlx::FromRow, Clone)]
+pub struct MovieList {
+    pub movieId: Option<i32>,
+    pub title: Option<String>,
+}
+
+#[derive(sqlx::FromRow, Clone)]
+pub struct MovieId {
+    pub movieId: Option<i32>,
+}

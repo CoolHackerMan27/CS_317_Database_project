@@ -4,7 +4,7 @@ pub mod gui_events;
 pub mod record;
 
 use gui_events::ToGui;
-use record::Record;
+use record::{MovieList, Record};
 use slint::{ModelRc, SharedString, VecModel};
 use std::{
     fmt::Error,
@@ -60,7 +60,7 @@ pub fn parse_result(result: ToGui) -> ModelRc<slint::SharedString> {
 }
 
 pub fn parse_movie_list(
-    movie_list: Result<Vec<Record>, sqlx::Error>,
+    movie_list: Result<Vec<MovieList>, sqlx::Error>,
 ) -> ModelRc<slint::SharedString> {
     if let record = movie_list.unwrap() {
         let mut vec = Vec::new();
