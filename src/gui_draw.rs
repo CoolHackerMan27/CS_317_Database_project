@@ -21,7 +21,7 @@ slint::slint! {
     export component MainGui inherits Window{
         InitButtonVisible: true;
         AllOtherVisible: false;
-        ResetVisible: true;
+        ResetVisible: false;
         MovieThumbnailPath: "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.imdb.com%2Ftitle%2Ftt0111161%2F&psig=AOvVaw3";
         MovieDetailsVisible: false;
         BasicColor: #1a2646;
