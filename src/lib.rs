@@ -5,23 +5,17 @@ pub mod record;
 
 use gui_events::ToGui;
 use record::{MovieList, Record};
-use slint::{Model, ModelRc, SharedString, VecModel};
+use slint::{Model, ModelExt, ModelRc, SharedString, VecModel};
 use std::{
+    borrow::Borrow,
     fmt::Error,
     io::{self, Write},
+    rc::Rc,
     slice::SliceIndex,
 };
 
 pub fn string_to_shared_string(string: String) -> slint::SharedString {
     slint::SharedString::from(string)
-}
-
-pub fn model_rc_to_string(input: ModelRc<slint::SharedString>) -> String {
-    let mut string = String::new();
-    for item in input.iter() {
-        string.push_str(&format!("{}\n", item));
-    }
-    string
 }
 
 pub fn actorlist_to_string(actorlist: Vec<record::CastMovieRecord>) -> String {
@@ -36,6 +30,12 @@ pub fn actorlist_to_string(actorlist: Vec<record::CastMovieRecord>) -> String {
     }
     actor_string
 }
+
+fn shared_string_to_strings(shared_string: slint::ModelRc<SharedString>) -> Vec<String> {
+    let vec_model = shared_string.borrow();
+    vec_model.iter().map(|s| s.to_string()).collect()
+}
+
 pub async fn get_user_input() -> String {
     let mut input = String::new();
     io::stdout().flush().unwrap(); // Flush the output buffer
@@ -44,6 +44,7 @@ pub async fn get_user_input() -> String {
         .expect("Failed to read line");
     input.trim().to_string()
 }
+
 pub async fn get_user_input_i32() -> std::result::Result<i32, sqlx::Error> {
     let mut input = String::new();
     io::stdin()

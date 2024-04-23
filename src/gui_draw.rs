@@ -1,20 +1,14 @@
-use crate::db::{
-    filter_by_format, filter_by_rating, filter_by_release, filter_by_title,
-    get_sub_reviews_from_reviewID,
-};
-use crate::gui_events::{
-    get_all, get_all_movie_details, get_pool, get_sub_review_list, handle_init, ToGui,
-};
-
+use crate::db::{filter_by_format, filter_by_rating, filter_by_release, filter_by_title};
+use crate::gui_events::{get_all, get_all_movie_details, get_pool, get_sub_review_list, ToGui};
 use crate::{
-    actorlist_to_string, model_rc_to_string, parse_movie_list, parse_result,
+    actorlist_to_string, parse_movie_list, parse_result, shared_string_to_strings,
     string_to_shared_string,
 };
 use once_cell::sync::Lazy;
 use slint::spawn_local;
 use slint::SharedString;
-use slint::{self, ModelRc};
-use sqlx::{pool, MySqlPool};
+use slint::{self};
+use sqlx::MySqlPool;
 use std::sync::Mutex;
 // Shared state
 static POOL: Lazy<Mutex<Option<MySqlPool>>> = Lazy::new(|| Mutex::new(None));
@@ -33,6 +27,9 @@ slint::slint! {
         width: 800px;
         height: 790px;
         title: "Movie Database";
+        CastAgeOUT:  [];
+        CastNameOUT: [];
+        CastRoleOUT: [];
         in property <[string]> MovieList;
         in property <[string]> SubReviewList;
         in property <color> BasicColor;
@@ -716,19 +713,20 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     let release_date = app.get_ReleaseDateOUT();
                     let format = app.get_FormatOUT();
                     let description = app.get_DescriptionOUT();
-                    let cast_name = model_rc_to_string(app.get_CastNameOUT());
-                    let cast_age = model_rc_to_string(app.get_CastAgeOUT());
-                    let cast_role = model_rc_to_string(app.get_CastRoleOUT());
+                    let cast_name = shared_string_to_strings(app.get_CastNameOUT());
+                    let cast_age = shared_string_to_strings(app.get_CastAgeOUT());
+                    let cast_role = shared_string_to_strings(app.get_CastRoleOUT());
                     println!(
-                        "Submit Button Clicked, Adding Movie: {} {} {} {} {} {} {}",
-                        movie_title,
-                        release_date,
-                        format,
-                        description,
-                        cast_name,
-                        cast_age,
-                        cast_role
+                        "Submit Button Clicked, Adding Movie: {} {} {} {}",
+                        movie_title, release_date, format, description
                     );
+                    //print the cast
+                    for i in 0..cast_name.len() + 1 {
+                        println!(
+                            "Name: {}, Age: {}, Role: {}",
+                            cast_name[i], cast_age[i], cast_role[i]
+                        );
+                    }
                 }
                 _ => {}
             }
