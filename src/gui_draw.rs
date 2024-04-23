@@ -1,10 +1,3 @@
-<<<<<<< Updated upstream
-use crate::db::{filter_by_format, filter_by_rating, filter_by_release, filter_by_title};
-use crate::gui_events::{get_all, get_all_movie_details, get_pool, get_sub_review_list, ToGui};
-use crate::{
-    actorlist_to_string, parse_movie_list, parse_result, shared_string_to_strings,
-    string_to_shared_string,
-=======
 use crate::db::{
     filter_by_format, filter_by_rating, filter_by_release, filter_by_title,
     get_sub_reviews_from_reviewID,
@@ -14,19 +7,13 @@ use crate::gui_events::{get_all, get_all_movie_details, get_pool, get_sub_review
 use crate::record::FromGui;
 use crate::{
     actorlist_to_string, parse_movie_list, parse_result, string_to_shared_string, vec_str_to_model,
->>>>>>> Stashed changes
 };
 use once_cell::sync::Lazy;
 use slint::spawn_local;
 use slint::SharedString;
-<<<<<<< Updated upstream
-use slint::{self};
-use sqlx::MySqlPool;
-=======
 use slint::{self, ModelRc};
 use sqlx::{pool, MySqlPool};
 use std::cell::RefCell;
->>>>>>> Stashed changes
 use std::sync::Mutex;
 use std::vec;
 // Shared state
@@ -46,9 +33,6 @@ slint::slint! {
         width: 800px;
         height: 790px;
         title: "Movie Database";
-        CastAgeOUT:  [];
-        CastNameOUT: [];
-        CastRoleOUT: [];
         in property <[string]> MovieList;
         in property <[string]> SubReviewList;
         in property <color> BasicColor;
@@ -733,22 +717,6 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     let release_date = app.get_ReleaseDateOUT();
                     let format = app.get_FormatOUT();
                     let description = app.get_DescriptionOUT();
-<<<<<<< Updated upstream
-                    let cast_name = shared_string_to_strings(app.get_CastNameOUT());
-                    let cast_age = shared_string_to_strings(app.get_CastAgeOUT());
-                    let cast_role = shared_string_to_strings(app.get_CastRoleOUT());
-                    println!(
-                        "Submit Button Clicked, Adding Movie: {} {} {} {}",
-                        movie_title, release_date, format, description
-                    );
-                    //print the cast
-                    for i in 0..cast_name.len() + 1 {
-                        println!(
-                            "Name: {}, Age: {}, Role: {}",
-                            cast_name[i], cast_age[i], cast_role[i]
-                        );
-                    }
-=======
                     println!(
                         "Submit Button Clicked, Adding Movie: {} {} {} {} ",
                         movie_title, release_date, format, description
@@ -776,7 +744,6 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                         cast_role.to_string()
                     ));
                     app.set_CastListIN(vec_str_to_model(cast_list.clone()));
->>>>>>> Stashed changes
                 }
                 _ => {}
             }
