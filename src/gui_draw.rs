@@ -830,30 +830,30 @@ async fn populate_sub_review_list(app: MainGui, pool: MySqlPool, review_id: i32)
 }
 
 async fn fill_from_gui(
-    title: String,
+    movie_title: String,
     release_date: i32,
     format: String,
-    decription: String,
+    description: String,
     cast: Vec<String>,
     aggregate: i32,
     sub_review_num: i32,
     sub_review_title: String,
     sub_review_desc: String,
 ) -> FromGui {
+    //fill in the struct
+
     FromGui {
-        movie_title: "".to_string(),
-        actor_name: Vec::new(),
+        movie_title: movie_title,
+        actor_name: cast,
         actor_age: Vec::new(),
         actor_role: Vec::new(),
-        aggregate: 0,
-        title: "".to_string(),
-        description: "".to_string(),
-        format: "".to_string(),
-        releaseDate: 0,
-        sub_review_num: 0,
-        sub_review_score: 0,
-        sub_review_title: "".to_string(),
-        sub_review_desc: "".to_string(),
+        aggregate: aggregate,
+        description: description,
+        format: format,
+        releaseDate: release_date,
+        sub_review_num: sub_review_num,
+        sub_review_score: aggregate,
+        sub_review_title: sub_review_title,
+        sub_review_desc: sub_review_desc,
     }
-    //fill in the struct
 }
