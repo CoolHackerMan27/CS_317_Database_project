@@ -1,17 +1,36 @@
+<<<<<<< Updated upstream
 use crate::db::{filter_by_format, filter_by_rating, filter_by_release, filter_by_title};
 use crate::gui_events::{get_all, get_all_movie_details, get_pool, get_sub_review_list, ToGui};
 use crate::{
     actorlist_to_string, parse_movie_list, parse_result, shared_string_to_strings,
     string_to_shared_string,
+=======
+use crate::db::{
+    filter_by_format, filter_by_rating, filter_by_release, filter_by_title,
+    get_sub_reviews_from_reviewID,
+};
+use crate::gui_events::{get_all, get_all_movie_details, get_pool, get_sub_review_list, ToGui};
+
+use crate::record::FromGui;
+use crate::{
+    actorlist_to_string, parse_movie_list, parse_result, string_to_shared_string, vec_str_to_model,
+>>>>>>> Stashed changes
 };
 use once_cell::sync::Lazy;
 use slint::spawn_local;
 use slint::SharedString;
+<<<<<<< Updated upstream
 use slint::{self};
 use sqlx::MySqlPool;
+=======
+use slint::{self, ModelRc};
+use sqlx::{pool, MySqlPool};
+use std::cell::RefCell;
+>>>>>>> Stashed changes
 use std::sync::Mutex;
+use std::vec;
 // Shared state
-static POOL: Lazy<Mutex<Option<MySqlPool>>> = Lazy::new(|| Mutex::new(None));
+static CAST_LIST: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 slint::slint! {
     import { Button, ListView, ScrollView, GridBox, Slider, ComboBox, CheckBox, Switch, StandardTableView, TabWidget} from "std-widgets.slint";
@@ -21,7 +40,7 @@ slint::slint! {
         ResetVisible: false;
         MovieDetailsVisible: false;
         BasicColor: #1a2646;
-        DialogVisible: false;
+        DialogVisible: true;
         NumOfCastMembers: 1;
         //size of the window
         width: 800px;
@@ -42,6 +61,7 @@ slint::slint! {
         in property <string> Cast;
         in property <string> Review;
         in property <int> ReleaseDate;
+        in property <[string]> CastListIN;
         out property <bool> ResetVisible;
         out property <bool> DialogVisible;
         out property <string> Filter;
@@ -51,9 +71,9 @@ slint::slint! {
         out property <int> ReleaseDateOUT;
         out property <string> FormatOUT;
         out property <string> DescriptionOUT;
-        out property <[string]> CastAgeOUT;
-        out property <[string]> CastNameOUT;
-        out property <[string]> CastRoleOUT;
+        out property <string> CastAgeOUT;
+        out property <string> CastNameOUT;
+        out property <string> CastRoleOUT;
         out property <int> ReviewOUT;
         out property <string> SubReviewOUT;
         out property <bool> MovieDetailsVisible;
@@ -534,118 +554,120 @@ slint::slint! {
                     border-radius: 5px;
                     border-width: 1px;
                     background: #53575f;
+                    Button {
+                        text: "Add Member";
+                        x: 5px;
+                        y: 80px;
+                        height: 25px;
+                        width: 100px;
+                        z:99;
+                        clicked => {
+                            NumOfCastMembers += 1;
+                            eventOccured();
+                            Event = "AddMemberClicked";
+                        }
+                    }
+                    Button {
+                        text: "Remove Member";
+                        x: 110px;
+                        y: 80px;
+                        height: 25px;
+                        width: 100px;
+                        z:99;
+                        clicked => {
+                            NumOfCastMembers -= 1;
+                            eventOccured();
+                            Event = "RemoveMemberClicked";
+                        }
+                    }
                     Text {
                         text: "Cast: ";
                         width: 69px;
                         height: 32px;
-                        x: 10px;
+                        x: 83px;
                         y: 5px;
                         font-size: 20px;
-                    }
-                    Button {
-                        text: "+";
-                        x: 185px;
-                        y: 7px;
-                        height: 24px;
-                        width: 25px;
                         z:99;
-                        clicked => {
-                            NumOfCastMembers = NumOfCastMembers + 1;
-                        }
                     }
-                    Button {
-                        text: "-";
+                    Rectangle {
+                        background: #c8cdd6;
+                        border-radius: 5px;
+                        x: 5px;
+                        y: 50px;
+                        width: 60px;
+                        height: 25px;
+                        z:90;
+                        Text {
+                            text: "Name";
+                            x: 2px;
+                            y: -25px;
+                            font-size: 20px;
+                        }
+                        TextInput {
+                            x: 3px;
+                            y: 0px;
+                            width: 60px;
+                            height: 25px;
+                            z:90;
+                            edited => {
+                                CastNameOUT = self.text;
+                            }
+                        }
+
+                    }
+                    Rectangle {
+                        border-radius: 5px;
+                        background: #c8cdd6;
+                        x: 80px;
+                        y: 50px;
+                        width: 60px;
+                        height: 25px;
+                        z:90;
+                        Text {
+                            text: "Age";
+                            x: 10px;
+                            y: -25px;
+                            font-size: 20px;
+                        }
+                        TextInput {
+                            edited => {
+                                CastAgeOUT = self.text;
+                            }
+
+                        }
+
+                    }
+                    Rectangle {
+                        y: 50px;
                         x: 155px;
-                        y: 7px;
-                        height: 24px;
-                        width:25px;
-                        z:99;
-                        clicked => {
-                            NumOfCastMembers = NumOfCastMembers - 1;
+                        width: 60px;
+                        height: 25px;
+                        z:90;
+                        background: #c8cdd6;
+                        border-radius: 5px;
+                        Text {
+                            text: "Role";
+                            x: 3px;
+                            y: -25px;
+                            font-size: 20px;
                         }
+                        TextInput {
+                            edited => {
+                                CastRoleOUT = self.text;
+                            }
+
+                        }
+
                     }
                     ListView {
-                        x: 0px;
-                        y: 30px;
-                        width: 70px;
-                        height: 175px;
-                        for int in NumOfCastMembers: Text {
-                            Rectangle {
-                                border-radius: 2px;
-                                border-width: 0.5px;
-                                border-color: #000;
-                                background: #bdbbbb;
-                                width: 67px;
-                                height: 15px;
-                                y:(16px * int);
-                                TextInput {
-                                    width: 67px;
-                                    height: 15px;
-                                    text: "Enter Name";
-                                    font-size: 10px;
-                                    visible: true;
-                                    enabled: true;
-                                    edited => {
-                                        CastNameOUT[int] = self.text;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    ListView {
-                        x: 70px;
-                        y: 30px;
-                        width: 70px;
-                        height: 175px;
-                        for int in NumOfCastMembers: Text {
-                            Rectangle {
-                                border-radius: 2px;
-                                border-width: 0.5px;
-                                border-color: #000;
-                                background: #bdbbbb;
-                                width: 67px;
-                                height: 15px;
-                                y:(16px * int);
-                                TextInput {
-                                    width: 67px;
-                                    height: 15px;
-                                    text: "Enter Age";
-                                    font-size: 10px;
-                                    visible: true;
-                                    enabled: true;
-                                    edited => {
-                                        CastAgeOUT[int] = self.text;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    ListView {
-                        x: 140px;
-                        y: 30px;
-                        width: 70px;
-                        height: 175px;
-                        for int in NumOfCastMembers: Text {
-                            Rectangle {
-                                border-radius: 2px;
-                                border-width: 0.5px;
-                                border-color: #000;
-                                background: #bdbbbb;
-                                width: 67px;
-                                height: 15px;
-                                y:(16px * int);
-                                TextInput {
-                                    width: 67px;
-                                    height: 15px;
-                                    text: "Enter Role";
-                                    font-size: 10px;
-                                    visible: true;
-                                    enabled: true;
-                                    edited => {
-                                        CastRoleOUT[int] = self.text;
-                                    }
-                                }
-                            }
+                        x: 5px;
+                        y: 105px;
+                        width: 210px;
+                        height: 100px;
+                        viewport-width: 1000px;
+                        for data in CastListIN: Text {
+                            text: data;
+                            font-size: 14px;
                         }
                     }
                 }
@@ -682,7 +704,6 @@ pub async fn init() {
         gui_loop(app, pool.unwrap()).await;
     }
 }
-
 async fn gui_loop(app: MainGui, pool: MySqlPool) {
     let weak_app = app.as_weak();
     let weak_pool = pool.clone();
@@ -690,8 +711,7 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
         let app = weak_app.upgrade().unwrap();
         let pool = weak_pool.clone();
         let _ = spawn_local(async move {
-            let event = app.get_Event();
-            match event.as_str() {
+            match app.get_Event().as_str() {
                 "InitButtonClicked" => init_button_clicked(app, pool).await,
                 "SearchButtonClicked" => {
                     let filter = &app.get_Filter();
@@ -713,6 +733,7 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     let release_date = app.get_ReleaseDateOUT();
                     let format = app.get_FormatOUT();
                     let description = app.get_DescriptionOUT();
+<<<<<<< Updated upstream
                     let cast_name = shared_string_to_strings(app.get_CastNameOUT());
                     let cast_age = shared_string_to_strings(app.get_CastAgeOUT());
                     let cast_role = shared_string_to_strings(app.get_CastRoleOUT());
@@ -727,6 +748,35 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                             cast_name[i], cast_age[i], cast_role[i]
                         );
                     }
+=======
+                    println!(
+                        "Submit Button Clicked, Adding Movie: {} {} {} {} ",
+                        movie_title, release_date, format, description
+                    );
+                    //print cast list
+                    let cast_list = CAST_LIST.lock().unwrap();
+                    for cast in cast_list.iter() {
+                        println!("Cast: {}", cast);
+                    }
+                }
+                "AddMemberClicked" => {
+                    let mut cast_list = CAST_LIST.lock().unwrap();
+                    let cast_name = app.get_CastNameOUT();
+                    let cast_age = app.get_CastAgeOUT();
+                    let cast_role = app.get_CastRoleOUT();
+                    println!(
+                        "Add Member Clicked, Adding Member: {} {} {}",
+                        cast_name, cast_age, cast_role
+                    );
+                    // Push to the cast_list
+                    cast_list.push(format!(
+                        "{} {} {}",
+                        cast_name.to_string(),
+                        cast_age.to_string(),
+                        cast_role.to_string()
+                    ));
+                    app.set_CastListIN(vec_str_to_model(cast_list.clone()));
+>>>>>>> Stashed changes
                 }
                 _ => {}
             }
@@ -810,4 +860,33 @@ async fn populate_sub_review_list(app: MainGui, pool: MySqlPool, review_id: i32)
     let model = parse_result(result);
     print!("SubReviewList: {:?}", model);
     app.set_SubReviewList(model);
+}
+
+async fn fill_from_gui(
+    title: String,
+    release_date: i32,
+    format: String,
+    decription: String,
+    cast: Vec<String>,
+    aggregate: i32,
+    sub_review_num: i32,
+    sub_review_title: String,
+    sub_review_desc: String,
+) -> FromGui {
+    FromGui {
+        movie_title: "".to_string(),
+        actor_name: Vec::new(),
+        actor_age: Vec::new(),
+        actor_role: Vec::new(),
+        aggregate: 0,
+        title: "".to_string(),
+        description: "".to_string(),
+        format: "".to_string(),
+        releaseDate: 0,
+        sub_review_num: 0,
+        sub_review_score: 0,
+        sub_review_title: "".to_string(),
+        sub_review_desc: "".to_string(),
+    }
+    //fill in the struct
 }

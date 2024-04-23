@@ -87,6 +87,12 @@ fn to_shared_string(input: String) -> SharedString {
     input.into()
 }
 
+pub fn vec_str_to_model(input: Vec<String>) -> ModelRc<slint::SharedString> {
+    let shared_string: Vec<slint::SharedString> = input.into_iter().map(Into::into).collect();
+    let model = slint::ModelRc::new(VecModel::from(shared_string));
+    return model;
+}
+
 fn clean_result(result: ToGui) -> Vec<String> {
     let vec = result.result;
     //Record { movieId: Some(1), title: Some("Inception"), releaseDate: Some(2010), format: Some("Blu-ray"), description: Some("A mind-bending heist thriller directed by Christopher Nolan") }

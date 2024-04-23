@@ -3,10 +3,12 @@ use sqlx::MySqlPool;
 use crate::db::establish_connection;
 use crate::db::get_all as get_all_records;
 use crate::db::get_cast_from_movieID;
+use crate::db::get_max_movie_id;
 use crate::db::get_movie_details_from_title;
 use crate::db::get_reviews_from_movieID;
 use crate::db::get_sub_reviews_from_reviewID;
 use crate::record;
+use crate::record::FromGui;
 
 #[derive(Clone)]
 pub struct ToGui {
@@ -54,6 +56,45 @@ pub async fn handle_init() -> ToGui {
     result
 }
 
+pub async fn add_movie(movie: FromGui, pool: &MySqlPool) {
+    //Generate a new movieId
+    let movieId = get_max_movie_id(pool).await.unwrap().into_inner() + 1;
+    let title = movie.movie_title;
+    let releaseDate = movie.releaseDate;
+    let format = movie.format;
+    let description = movie.description;
+    let query = format!("INSERT INTO Movie (movieId, title, releaseDate, format, description) VALUES ({}, '{}', {}, '{}', '{}')", movieId, title, releaseDate, format, description);
+    match crate::db::add(query, pool).await {
+        Ok(_) => {
+            println!("Movie added successfully");
+        }
+        Err(e) => {
+            println!("Error: {}", e);
+        }
+    }
+    //Add Cast Members
+    let mut castId = 0;
+    for i in 0..movie.actor_name.len() {
+        castId = crate::db::get_max_cast_id(pool)
+            .await
+            .unwrap()
+            .castId
+            .unwrap()
+            + 1;
+        let actor_name = movie.actor_name.get(i).unwrap();
+        let actor_age = movie.actor_age.get(i).unwrap();
+        let actor_role = movie.actor_role.get(i).unwrap();
+        let query = format!("INSERT INTO CastMembers (castId, movieId, actor_name, actor_age, actor_role) VALUES ({}, {}, {:?}, {:?}, {:?})", castId, movieId, actor_name, actor_age, actor_role);
+        match crate::db::add(query, pool).await {
+            Ok(_) => {
+                println!("Cast Member added successfully");
+            }
+            Err(e) => {
+                println!("Error: {}", e);
+            }
+        }
+    }
+}
 pub async fn get_all_movie_details(pool: &MySqlPool, movie_title: String) -> ToGui {
     let mut result = ToGui {
         result: Vec::new(),

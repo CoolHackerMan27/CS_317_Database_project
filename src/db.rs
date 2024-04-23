@@ -1,3 +1,4 @@
+use crate::record::CastId;
 use crate::record::CastMovieRecord;
 use crate::record::MicroReview;
 use crate::record::MovieId;
@@ -8,6 +9,7 @@ use crate::record::SubReview;
 
 use sqlx;
 
+use sqlx::query;
 use sqlx::MySqlPool;
 use sqlx::Row;
 
@@ -121,6 +123,24 @@ pub async fn filter_by_format(
     .await?;
 
     Ok(records)
+}
+pub async fn get_max_movie_id(pool: &MySqlPool) -> Result<MovieId, sqlx::Error> {
+    let record = sqlx::query_as!(MovieId, "SELECT MAX(movieId) as movieId FROM Movie")
+        .fetch_one(pool)
+        .await?;
+    Ok(record)
+}
+
+pub async fn get_max_cast_id(pool: &MySqlPool) -> Result<CastId, sqlx::Error> {
+    let record = sqlx::query_as!(CastId, "SELECT MAX(castID) as castId FROM CastMembers")
+        .fetch_one(pool)
+        .await?;
+    Ok(record)
+}
+
+pub async fn add(query: String, pool: &MySqlPool) -> Result<(), sqlx::Error> {
+    sqlx::query(&query).execute(pool).await?;
+    Ok(())
 }
 
 pub async fn filter_by_rating(
