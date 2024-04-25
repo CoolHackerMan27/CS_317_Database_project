@@ -1,12 +1,16 @@
+use std::string;
+
 use sqlx::MySqlPool;
 
 use crate::db::establish_connection;
+use crate::db::filter_by_title;
 use crate::db::get_all as get_all_records;
 use crate::db::get_cast_from_movieID;
 use crate::db::get_max_movie_id;
 use crate::db::get_movie_details_from_title;
 use crate::db::get_reviews_from_movieID;
 use crate::db::get_sub_reviews_from_reviewID;
+use crate::db::remove_movie_by_id;
 use crate::record;
 use crate::record::FromGui;
 
@@ -55,6 +59,28 @@ pub async fn handle_init() -> ToGui {
         }
     }
     result
+}
+pub async fn delete_data(title: String, pool: &MySqlPool) {
+    let title_id = filter_by_title(pool, title).await;
+    // handle error and get i32 from movieID
+    match title_id {
+        Ok(movie_id) => {
+            for i in 0..movie_id.len() {
+                let movie_id = movie_id[i].movieId.unwrap();
+                match remove_movie_by_id(&pool, movie_id).await {
+                    Ok(_) => {
+                        println!("Movie deleted successfully");
+                    }
+                    Err(e) => {
+                        println!("Error: {}", e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("Error: {}", e);
+        }
+    }
 }
 
 pub async fn add_movie(movie: FromGui, pool: &MySqlPool) {

@@ -1,7 +1,9 @@
 use crate::db::{
     filter_by_actor, filter_by_format, filter_by_rating, filter_by_release, filter_by_title,
 };
-use crate::gui_events::{add_movie, get_all, get_all_movie_details, get_pool, get_sub_review_list};
+use crate::gui_events::{
+    add_movie, delete_data, get_all, get_all_movie_details, get_pool, get_sub_review_list,
+};
 
 use crate::record::FromGui;
 use crate::{
@@ -22,12 +24,13 @@ slint::slint! {
     import { Button, ListView, ScrollView, GridBox, Slider, ComboBox, CheckBox, Switch, StandardTableView, TabWidget} from "std-widgets.slint";
     export component MainGui inherits Window{
         InitButtonVisible: true;
-        AllOtherVisible: false;
+        AllOtherVisible: true;
         ResetVisible: false;
         MovieDetailsVisible: false;
         BasicColor: #1a2646;
-        DialogVisible: true;
+        DialogVisible: false;
         NumOfCastMembers: 1;
+        MovieList: ["Movie1", "Movie2", "Movie3"];
         //size of the window
         width: 800px;
         height: 790px;
@@ -142,18 +145,33 @@ slint::slint! {
                 x: 5px;
                 y: 26px;
                 width: 252px;
-                for data in MovieList: Button {
-                    width: 250px; // specify the width of the button
-                    height: 50px; // specify the height of the button
-                    text: data;
-                    clicked => {
-                        eventOccured();
-                        Event = "MovieSelected";
-                        MovieTitleOUT = data;
-                        MovieDetailsVisible = true;
+                for data in MovieList: Rectangle{
+                    width: 250px; // specify the width of the Rectangle
+                    height: 50px; // specify the height of the Rectangle
+                    Button {
+                        width: 250px; // specify the width of the button
+                        height: 45px; // specify the height of the button
+                        text: data;
+                        clicked => {
+                            eventOccured();
+                            Event = "MovieSelected";
+                            MovieTitleOUT = data;
+                            MovieDetailsVisible = true;
+                        }
                     }
-                }
+                    Button{
+                        width: 50px;
+                        height: 45px;
+                        text: "Delete";
+                        x: 200px;
+                        clicked => {
+                            eventOccured();
+                            Event = "DeleteMovieClicked";
+                            MovieTitleOUT = data;
+                        }
+                    }
 
+                }
             }
         }
         Rectangle {
@@ -399,6 +417,13 @@ slint::slint! {
                         DialogVisible = false;
                         eventOccured();
                         Event = "SubmitButtonClicked";
+                        // Reset the Default values
+                        MovieTitleOUT = "Enter Movie Title";
+                        ReleaseDateOUT = 0;
+                        FormatOUT = "Enter Format";
+                        DescriptionOUT = "Enter Description";
+                        ReviewOUT = 0;
+                        SubReviewOUT = "Enter Sub Review";
                     }
                 }
                 Rectangle {
@@ -745,21 +770,14 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     app.set_MovieList(model);
                 }
                 "SubmitButtonClicked" => {
+                    //Get movie details from GUI
                     let movie_title = app.get_MovieTitleOUT();
                     let release_date = app.get_ReleaseDateOUT();
                     let format = app.get_FormatOUT();
                     let description = app.get_DescriptionOUT();
                     let review_score = app.get_ReviewOUT();
-                    println!(
-                        "Submit Button Clicked, Adding Movie: {} {} {} {} ",
-                        movie_title, release_date, format, description
-                    );
-                    //print cast list
                     let cast_list = CAST_LIST.lock().unwrap();
-                    for cast in cast_list.iter() {
-                        println!("Cast: {}", cast);
-                    }
-
+                    //fill in the struct that is sent to database
                     let from_gui = fill_from_gui(
                         movie_title.to_string(),
                         release_date.to_string().parse().unwrap(),
@@ -773,24 +791,32 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     );
                     //add movie to db
                     add_movie(from_gui, &pool).await;
+                    populate_movie_list(app, pool).await;
+                    cast_list.clear();
                 }
                 "AddMemberClicked" => {
                     let mut cast_list = CAST_LIST.lock().unwrap();
                     let cast_name = app.get_CastNameOUT();
                     let cast_age = app.get_CastAgeOUT();
                     let cast_role = app.get_CastRoleOUT();
-                    println!(
-                        "Add Member Clicked, Adding Member: {} {} {}",
-                        cast_name, cast_age, cast_role
-                    );
                     // Push to the cast_list
                     cast_list.push(format!(
-                        "{}; {} ;{}",
+                        "{};{};{}",
                         cast_name.to_string(),
                         cast_age.to_string(),
                         cast_role.to_string()
                     ));
                     app.set_CastListIN(vec_str_to_model(cast_list.clone()));
+                }
+                "RemoveMemberClicked" => {
+                    let mut cast_list = CAST_LIST.lock().unwrap();
+                    cast_list.pop();
+                    app.set_CastListIN(vec_str_to_model(cast_list.clone()));
+                }
+                "DeleteMovieClicked" => {
+                    let movie_title = app.get_MovieTitleOUT().to_string();
+                    delete_data(movie_title, &pool).await;
+                    populate_movie_list(app, pool).await;
                 }
                 _ => {}
             }
@@ -916,8 +942,11 @@ fn fill_from_gui(
     for i in 0..cast.len() {
         let cast_member = cast.get(i).unwrap();
         let cast_member_split: Vec<&str> = cast_member.split(";").collect();
+
         actor_name.push(cast_member_split[0].to_string());
-        let actorage: Result<i32, _> = cast_member_split[1].parse();
+
+        let actorage: Result<i32, _> = cast_member_split[1].trim().parse();
+
         if let Ok(age) = actorage {
             print!("Actor Age: {}", age);
             actor_age.push(age);
@@ -925,6 +954,7 @@ fn fill_from_gui(
             println!("Invalid age for actor: {}", cast_member_split[1]);
             actor_age.push(0);
         }
+
         actor_role.push(cast_member_split[2].to_string());
     }
 

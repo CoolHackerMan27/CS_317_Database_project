@@ -99,17 +99,14 @@ pub async fn filter_by_actor(
     Ok(records)
 }
 
-pub async fn remove_move_by_id(pool: &MySqlPool, movie_id: i32) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM Movie WHERE movieId = ?")
-        .bind(movie_id)
-        .execute(pool)
-        .await?;
-
+pub async fn remove_movie_by_id(pool: &MySqlPool, movie_id: i32) -> Result<(), sqlx::Error> {
+    // First, delete related records from the CastMembers table
     sqlx::query("DELETE FROM CastMembers WHERE movieId = ?")
         .bind(movie_id)
         .execute(pool)
         .await?;
 
+    // Delete related records from the Review table
     let review_ids: Vec<i32> = sqlx::query_scalar("SELECT reviewID FROM Review WHERE movieId = ?")
         .bind(movie_id)
         .fetch_all(pool)
@@ -120,12 +117,19 @@ pub async fn remove_move_by_id(pool: &MySqlPool, movie_id: i32) -> Result<(), sq
         .execute(pool)
         .await?;
 
+    // Delete related records from the Sub_Review table
     for review_id in review_ids {
         sqlx::query("DELETE FROM Sub_Review WHERE reviewID = ?")
             .bind(review_id)
             .execute(pool)
             .await?;
     }
+
+    // Finally, delete the movie record from the Movie table
+    sqlx::query("DELETE FROM Movie WHERE movieId = ?")
+        .bind(movie_id)
+        .execute(pool)
+        .await?;
 
     Ok(())
 }
