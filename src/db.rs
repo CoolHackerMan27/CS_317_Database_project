@@ -6,9 +6,7 @@ use crate::record::MovieList;
 use crate::record::Record;
 use crate::record::Review;
 use crate::record::SubReview;
-
 use sqlx;
-
 use sqlx::query;
 use sqlx::MySqlPool;
 use sqlx::Row;

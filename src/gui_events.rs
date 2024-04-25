@@ -58,8 +58,8 @@ pub async fn handle_init() -> ToGui {
 
 pub async fn add_movie(movie: FromGui, pool: &MySqlPool) {
     //Generate a new movieId
-    let movieId = get_max_movie_id(pool).await.unwrap().into_inner() + 1;
-    let title = movie.movie_title;
+    let mut movieId = get_max_movie_id(pool).await.unwrap().movieId.unwrap() + 1;
+    let title = movie.title;
     let releaseDate = movie.releaseDate;
     let format = movie.format;
     let description = movie.description;

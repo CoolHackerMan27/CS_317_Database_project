@@ -50,7 +50,6 @@ pub struct MovieList {
 }
 
 pub struct FromGui {
-    pub movie_title: String,
     pub actor_name: Vec<String>,
     pub actor_age: Vec<i32>,
     pub actor_role: Vec<String>,

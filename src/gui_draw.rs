@@ -726,6 +726,18 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     for cast in cast_list.iter() {
                         println!("Cast: {}", cast);
                     }
+
+                    let from_gui = fill_from_gui(
+                        movie_title.,
+                        release_date,
+                        format,
+                        description,
+                        cast_list.clone(),
+                        0,
+                        0,
+                        "".to_string(),
+                        "".to_string()
+                    )
                 }
                 "AddMemberClicked" => {
                     let mut cast_list = CAST_LIST.lock().unwrap();
@@ -842,11 +854,24 @@ async fn fill_from_gui(
 ) -> FromGui {
     //fill in the struct
 
+    //brake cast array into elements
+    let mut actor_name: Vec<String> = Vec::new();
+    let mut actor_age: Vec<i32> = Vec::new();
+    let mut actor_role: Vec<String> = Vec::new();
+
+    for i in 0..cast.len() {
+        let cast_member = cast.get(i).unwrap();
+        let cast_member_split: Vec<&str> = cast_member.split(" ").collect();
+        actor_name.push(cast_member_split[0].to_string());
+        actor_age.push(cast_member_split[1].to_string().parse().unwrap());
+        actor_role.push(cast_member_split[2].to_string());
+    }
+
     FromGui {
-        movie_title: movie_title,
-        actor_name: cast,
-        actor_age: Vec::new(),
-        actor_role: Vec::new(),
+        title: movie_title,
+        actor_name: actor_name,
+        actor_age: actor_age,
+        actor_role: actor_role,
         aggregate: aggregate,
         description: description,
         format: format,
