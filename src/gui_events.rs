@@ -11,6 +11,7 @@ use crate::record;
 use crate::record::FromGui;
 
 #[derive(Clone)]
+
 pub struct ToGui {
     pub MovieData: Vec<record::Record>,
     pub ActorData: Vec<record::CastMovieRecord>,
@@ -58,7 +59,7 @@ pub async fn handle_init() -> ToGui {
 
 pub async fn add_movie(movie: FromGui, pool: &MySqlPool) {
     //Generate a new movieId
-    let mut movieId = get_max_movie_id(pool).await.unwrap().movieId.unwrap() + 1;
+    let movieId = get_max_movie_id(pool).await.unwrap().movieId.unwrap() + 1;
     let title = movie.title;
     let releaseDate = movie.releaseDate;
     let format = movie.format;
@@ -84,7 +85,7 @@ pub async fn add_movie(movie: FromGui, pool: &MySqlPool) {
         let actor_name = movie.actor_name.get(i).unwrap();
         let actor_age = movie.actor_age.get(i).unwrap();
         let actor_role = movie.actor_role.get(i).unwrap();
-        let query = format!("INSERT INTO CastMembers (castId, movieId, actor_name, actor_age, actor_role) VALUES ({}, {}, {:?}, {:?}, {:?})", castId, movieId, actor_name, actor_age, actor_role);
+        let query = format!("INSERT INTO CastMembers (castId, movieId, age, name, role, mis) VALUES ({}, {}, '{:?}', '{:?}', '{:?}', '{}')", castId, movieId, actor_age, actor_name, actor_role, "".to_string());
         match crate::db::add(query, pool).await {
             Ok(_) => {
                 println!("Cast Member added successfully");
@@ -95,6 +96,7 @@ pub async fn add_movie(movie: FromGui, pool: &MySqlPool) {
         }
     }
 }
+
 pub async fn get_all_movie_details(pool: &MySqlPool, movie_title: String) -> ToGui {
     let mut result = ToGui {
         result: Vec::new(),

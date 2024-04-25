@@ -4,18 +4,19 @@ pub mod gui_events;
 pub mod record;
 
 use gui_events::ToGui;
-use record::{MovieList, Record};
+use record::{MovieList};
 use slint::{Model, ModelExt, ModelRc, SharedString, VecModel};
 use std::{
     borrow::Borrow,
-    fmt::Error,
     io::{self, Write},
-    rc::Rc,
-    slice::SliceIndex,
 };
 
 pub fn string_to_shared_string(string: String) -> slint::SharedString {
     slint::SharedString::from(string)
+}
+
+pub fn shared_string_to_string(shared_string: slint::SharedString) -> String {
+    shared_string.to_string()
 }
 
 pub fn actorlist_to_string(actorlist: Vec<record::CastMovieRecord>) -> String {

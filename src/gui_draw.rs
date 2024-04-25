@@ -1,8 +1,7 @@
 use crate::db::{
-    filter_by_format, filter_by_rating, filter_by_release, filter_by_title,
-    get_sub_reviews_from_reviewID,
+    filter_by_actor, filter_by_format, filter_by_rating, filter_by_release, filter_by_title,
 };
-use crate::gui_events::{get_all, get_all_movie_details, get_pool, get_sub_review_list, ToGui};
+use crate::gui_events::{add_movie, get_all, get_all_movie_details, get_pool, get_sub_review_list};
 
 use crate::record::FromGui;
 use crate::{
@@ -11,11 +10,11 @@ use crate::{
 use once_cell::sync::Lazy;
 use slint::spawn_local;
 use slint::SharedString;
-use slint::{self, ModelRc};
-use sqlx::{pool, MySqlPool};
-use std::cell::RefCell;
+use slint::{self};
+use sqlx::MySqlPool;
+
 use std::sync::Mutex;
-use std::vec;
+
 // Shared state
 static CAST_LIST: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
@@ -154,6 +153,7 @@ slint::slint! {
                         MovieDetailsVisible = true;
                     }
                 }
+
             }
         }
         Rectangle {
@@ -403,7 +403,7 @@ slint::slint! {
                 }
                 Rectangle {
                     x: 20px;
-                    y: 100px;
+                    y: 55px;
                     z: 99;
                     width: 460px;
                     height: 25px;
@@ -430,6 +430,38 @@ slint::slint! {
                             eventOccured();
                             Event = "MovieTitleEntered";
                             MovieTitleOUT = self.text;
+                        }
+                    }
+                }
+                Rectangle {
+                    x: 20px;
+                    y: 100px;
+                    z: 99;
+                    width: 460px;
+                    height: 25px;
+                    border-radius: 5px;
+                    border-width: 1px;
+                    background: #53575f;
+                    Text {
+                        text: "Review Score: ";
+                        width: 138px;
+                        height: 32px;
+                        x: 10px;
+                        y: 0px;
+                        font-size: 20px;
+                    }
+                    TextInput {
+                        x: 155px;
+                        y: 5px;
+                        width: 500px;
+                        height: 25px;
+                        text: "Enter Review Score";
+                        visible: true;
+                        enabled: true;
+                        edited => {
+                            eventOccured();
+                            Event = "ReviewScoreEntered";
+                            ReviewOUT = self.text.to-float();
                         }
                     }
                 }
@@ -717,6 +749,7 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     let release_date = app.get_ReleaseDateOUT();
                     let format = app.get_FormatOUT();
                     let description = app.get_DescriptionOUT();
+                    let review_score = app.get_ReviewOUT();
                     println!(
                         "Submit Button Clicked, Adding Movie: {} {} {} {} ",
                         movie_title, release_date, format, description
@@ -728,16 +761,18 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     }
 
                     let from_gui = fill_from_gui(
-                        movie_title.,
-                        release_date,
-                        format,
-                        description,
+                        movie_title.to_string(),
+                        release_date.to_string().parse().unwrap(),
+                        format.to_string(),
+                        description.to_string(),
                         cast_list.clone(),
-                        0,
+                        review_score,
                         0,
                         "".to_string(),
-                        "".to_string()
-                    )
+                        "".to_string(),
+                    );
+                    //add movie to db
+                    add_movie(from_gui, &pool).await;
                 }
                 "AddMemberClicked" => {
                     let mut cast_list = CAST_LIST.lock().unwrap();
@@ -750,7 +785,7 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     );
                     // Push to the cast_list
                     cast_list.push(format!(
-                        "{} {} {}",
+                        "{}; {} ;{}",
                         cast_name.to_string(),
                         cast_age.to_string(),
                         cast_role.to_string()
@@ -795,7 +830,11 @@ async fn search_by_filters(filter: String, search_term: String, app: MainGui, po
             app.set_MovieList(model);
         }
         "Actor-Name" => {
-            println!("Searching by actor name, {}", search_term);
+            let search_term = search_term.to_string();
+            println!("Actor-Name: {}", search_term);
+            let movie_list = filter_by_actor(&pool, search_term).await;
+            let model = parse_movie_list(movie_list);
+            app.set_MovieList(model);
         }
         _ => {
             println!("Invalid filter, {}", filter);
@@ -808,24 +847,39 @@ pub async fn get_movie_details(app: MainGui, movie_title: SharedString, pool: My
     //get movie detai
     let result = get_all_movie_details(&pool, movie_title.to_string()).await;
     //display movie details
-    app.set_MovieTitleIN(string_to_shared_string(
-        result.MovieData[0].title.clone().unwrap(),
-    ));
-    app.set_Format(string_to_shared_string(
-        result.MovieData[0].format.clone().unwrap(),
-    ));
-    app.set_Description(string_to_shared_string(
-        result.MovieData[0].description.clone().unwrap(),
-    ));
-    app.set_Cast(string_to_shared_string(actorlist_to_string(
-        result.ActorData.clone(),
-    )));
-    app.set_ReleaseDate(result.MovieData[0].releaseDate.unwrap());
-    println!("{}", actorlist_to_string(result.ActorData.clone()));
-    app.set_Review(string_to_shared_string(
-        result.ReviewData[0].aggregate.clone().unwrap().to_string(),
-    ));
-    populate_sub_review_list(app, pool, result.ReviewData[0].reviewID.unwrap()).await;
+    if !result.MovieData.is_empty() {
+        app.set_MovieTitleIN(string_to_shared_string(
+            result.MovieData[0].title.clone().unwrap(),
+        ));
+        app.set_Format(string_to_shared_string(
+            result.MovieData[0].format.clone().unwrap(),
+        ));
+        app.set_Description(string_to_shared_string(
+            result.MovieData[0].description.clone().unwrap(),
+        ));
+        if !result.ActorData.is_empty() {
+            app.set_Cast(string_to_shared_string(actorlist_to_string(
+                result.ActorData.clone(),
+            )));
+        } else {
+            println!("Warning: ActorData is empty");
+        }
+        app.set_ReleaseDate(result.MovieData[0].releaseDate.unwrap());
+        println!("{}", actorlist_to_string(result.ActorData.clone()));
+        if !result.ReviewData.is_empty() {
+            if let Some(aggregate) = &result.ReviewData[0].aggregate {
+                app.set_Review(string_to_shared_string(aggregate.to_string()));
+                populate_sub_review_list(app, pool, result.ReviewData[0].reviewID.unwrap()).await;
+            } else {
+                println!("Warning: aggregate field is missing in ReviewData[0]");
+                app.set_Review(string_to_shared_string("0".to_string()));
+            }
+        } else {
+            println!("Warning: ReviewData is empty");
+        }
+    } else {
+        println!("Warning: MovieData is empty");
+    }
 }
 
 async fn populate_movie_list(app: MainGui, pool: MySqlPool) {
@@ -841,7 +895,7 @@ async fn populate_sub_review_list(app: MainGui, pool: MySqlPool, review_id: i32)
     app.set_SubReviewList(model);
 }
 
-async fn fill_from_gui(
+fn fill_from_gui(
     movie_title: String,
     release_date: i32,
     format: String,
@@ -861,9 +915,16 @@ async fn fill_from_gui(
 
     for i in 0..cast.len() {
         let cast_member = cast.get(i).unwrap();
-        let cast_member_split: Vec<&str> = cast_member.split(" ").collect();
+        let cast_member_split: Vec<&str> = cast_member.split(";").collect();
         actor_name.push(cast_member_split[0].to_string());
-        actor_age.push(cast_member_split[1].to_string().parse().unwrap());
+        let actorage: Result<i32, _> = cast_member_split[1].parse();
+        if let Ok(age) = actorage {
+            print!("Actor Age: {}", age);
+            actor_age.push(age);
+        } else {
+            println!("Invalid age for actor: {}", cast_member_split[1]);
+            actor_age.push(0);
+        }
         actor_role.push(cast_member_split[2].to_string());
     }
 

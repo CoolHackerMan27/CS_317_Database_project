@@ -7,7 +7,7 @@ use crate::record::Record;
 use crate::record::Review;
 use crate::record::SubReview;
 use sqlx;
-use sqlx::query;
+
 use sqlx::MySqlPool;
 use sqlx::Row;
 
@@ -80,18 +80,54 @@ pub async fn filter_by_title(
     Ok(records)
 }
 
-async fn filter_by_actor(pool: &MySqlPool, name: String) -> Result<Vec<MovieList>, sqlx::Error> {
+pub async fn filter_by_actor(
+    pool: &MySqlPool,
+    name: String,
+) -> Result<Vec<MovieList>, sqlx::Error> {
+    let name = name.to_lowercase();
     let records: Vec<MovieList> = sqlx::query_as!(
         MovieList,
-        "SELECT title, m.movieId
+        "SELECT c.movieId, m.title AS title
         FROM CastMembers c
-        JOIN Movie m ON m.movieId = c.movieId
-        WHERE c.name = ?",
-        name
+        JOIN Movie m ON c.movieId = m.movieId
+        WHERE c.name LIKE ?",
+        format!("%{}%", name),
     )
     .fetch_all(pool)
     .await?;
+
     Ok(records)
+}
+
+pub async fn remove_move_by_id(pool: &MySqlPool, movie_id: i32) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM Movie WHERE movieId = ?")
+        .bind(movie_id)
+        .execute(pool)
+        .await?;
+
+    sqlx::query("DELETE FROM CastMembers WHERE movieId = ?")
+        .bind(movie_id)
+        .execute(pool)
+        .await?;
+
+    let review_ids: Vec<i32> = sqlx::query_scalar("SELECT reviewID FROM Review WHERE movieId = ?")
+        .bind(movie_id)
+        .fetch_all(pool)
+        .await?;
+
+    sqlx::query("DELETE FROM Review WHERE movieId = ?")
+        .bind(movie_id)
+        .execute(pool)
+        .await?;
+
+    for review_id in review_ids {
+        sqlx::query("DELETE FROM Sub_Review WHERE reviewID = ?")
+            .bind(review_id)
+            .execute(pool)
+            .await?;
+    }
+
+    Ok(())
 }
 
 pub async fn filter_by_release(
