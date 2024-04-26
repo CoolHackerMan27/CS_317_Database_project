@@ -19,6 +19,9 @@ use std::sync::Mutex;
 
 // Shared state
 static CAST_LIST: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static SUB_REVIEW_SCORE_LIST: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static SUB_REVIEW_DESC_LIST: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static SUB_REVIEW_TITLE_LIST: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 slint::slint! {
     import { Button, ListView, ScrollView, GridBox, Slider, ComboBox, CheckBox, Switch, StandardTableView, TabWidget} from "std-widgets.slint";
@@ -30,7 +33,7 @@ slint::slint! {
         BasicColor: #1a2646;
         DialogVisible: false;
         NumOfCastMembers: 1;
-        MovieList: ["Movie1", "Movie2", "Movie3"];
+        AddRevoewVisible: false;
         //size of the window
         width: 800px;
         height: 790px;
@@ -48,6 +51,7 @@ slint::slint! {
         in property <string> Review;
         in property <int> ReleaseDate;
         in property <[string]> CastListIN;
+        in property <[string]> SubReviewListIN;
         out property <bool> ResetVisible;
         out property <bool> DialogVisible;
         out property <string> Filter;
@@ -61,9 +65,13 @@ slint::slint! {
         out property <string> CastNameOUT;
         out property <string> CastRoleOUT;
         out property <int> ReviewOUT;
-        out property <string> SubReviewOUT;
+        out property <string> SubReviewScoreOUT;
+        out property <string> SubReviewTitleOUT;
+        out property <string> SubReviewDescOUT;
+        out property <int> NumOfSubReviews;
         out property <bool> MovieDetailsVisible;
         out property <int> NumOfCastMembers;
+        out property <bool> AddRevoewVisible;
         callback eventOccured();
         ComboBox {
             height: 27px;
@@ -406,6 +414,144 @@ slint::slint! {
                     }
                 }
                 Button {
+                    text: "Add Reviews";
+                    x: 10px;
+                    y: 10px;
+                    height: 25px;
+                    width: 100px;
+                    z:99;
+                    clicked => {
+                        eventOccured();
+                        AddRevoewVisible = true;
+                    }
+                }
+                Rectangle {
+                    visible: AddRevoewVisible;
+                    Button {
+                        text: "Add Sub-Review";
+                        x: 190px;
+                        y: 105px;
+                        height: 25px;
+                        width: 120px;
+                        z:99;
+                        clicked => {
+                            eventOccured();
+                            NumOfSubReviews += 1;
+                            Event = "AddSubReviewClicked";
+                        }
+                    }
+                    Rectangle {
+                        x: 20px;
+                        y: 75px;
+                        height: 25px;
+                        width: 150px;
+                        border-radius: 5px;
+                        border-width: 1px;
+                        background: #53575f;
+                        Text {
+                            text: "Sub-Review Title";
+                            width: 150px;
+                            height: 32px;
+                            x: 10px;
+                            y: -25px;
+                            font-size: 15px;
+                        }
+                        TextInput {
+                            x: 10px;
+                            y: 5px;
+                            width: 140px;
+                            height: 25px;
+                            text: "Enter Sub-Review Title";
+                            visible: true;
+                            enabled: true;
+                            edited => {
+                                SubReviewTitleOUT = self.text;
+                            }
+                        }
+
+                    }Rectangle {
+                        height: 25px;
+                        width: 150px;
+                        y: 75px;
+                        border-radius: 5px;
+                        border-width: 1px;
+                        background: #53575f;
+                        Text {
+                            text: "Sub-Review Description";
+                            width: 150px;
+                            height: 32px;
+                            x: 10px;
+                            y: -25px;
+                            font-size: 15px;
+                        }
+                        TextInput {
+                            x: 10px;
+                            y: 5px;
+                            width: 140px;
+                            height: 25px;
+                            text: "Enter Sub-Review Desc";
+                            visible: true;
+                            enabled: true;
+                            edited => {
+                                SubReviewDescOUT = self.text;
+                            }
+                        }
+                    }
+                    Rectangle {
+                        height: 25px;
+                        width: 150px;
+                        y: 75px;
+                        x: 330px;
+                        border-radius: 5px;
+                        border-width: 1px;
+                        background: #53575f;
+                        Text {
+                            text: "Sub-Review Score";
+                            width: 150px;
+                            height: 32px;
+                            x: 10px;
+                            y: -25px;
+                            font-size: 15px;
+                        }
+                        TextInput {
+                            x: 10px;
+                            y: 5px;
+                            width: 140px;
+                            height: 25px;
+                            text: "Enter Sub-Review Score";
+                            visible: true;
+                            enabled: true;
+                            edited => {
+                                SubReviewScoreOUT = self.text;
+                            }
+                        }
+
+
+                    }Rectangle {
+                        x: 22px;
+                        y: 130px;
+                        height: 325px;
+                        width: 450px;
+                        border-radius: 5px;
+                        border-width: 1px;
+                        background: #53575f;
+                        ListView {
+                            for data in SubReviewListIN : Rectangle {
+                                width: 450px;
+                                height: 30px;
+                                border-radius: 5px;
+                                border-width: 1px;
+                                Text {
+                                    text: data;
+                                    font-size: 14px;
+                                }
+                            }
+
+                        }
+
+                    }
+                }
+                Button {
                     text: "Submit";
                     x: 215px;
                     y: 465px;
@@ -418,12 +564,6 @@ slint::slint! {
                         eventOccured();
                         Event = "SubmitButtonClicked";
                         // Reset the Default values
-                        MovieTitleOUT = "Enter Movie Title";
-                        ReleaseDateOUT = 0;
-                        FormatOUT = "Enter Format";
-                        DescriptionOUT = "Enter Description";
-                        ReviewOUT = 0;
-                        SubReviewOUT = "Enter Sub Review";
                     }
                 }
                 Rectangle {
@@ -435,6 +575,7 @@ slint::slint! {
                     border-radius: 5px;
                     border-width: 1px;
                     background: #53575f;
+                    visible: !AddRevoewVisible;
                     Text {
                         text: "Movie Title: ";
                         width: 105px;
@@ -446,7 +587,7 @@ slint::slint! {
                     TextInput {
                         x: 155px;
                         y: 5px;
-                        width: 500px;
+                        width: 298px;
                         height: 25px;
                         text: "Enter Movie Title";
                         visible: true;
@@ -467,6 +608,7 @@ slint::slint! {
                     border-radius: 5px;
                     border-width: 1px;
                     background: #53575f;
+                    visible: !AddRevoewVisible;
                     Text {
                         text: "Review Score: ";
                         width: 138px;
@@ -478,7 +620,7 @@ slint::slint! {
                     TextInput {
                         x: 155px;
                         y: 5px;
-                        width: 500px;
+                        width: 299px;
                         height: 25px;
                         text: "Enter Review Score";
                         visible: true;
@@ -499,6 +641,7 @@ slint::slint! {
                     border-radius: 5px;
                     border-width: 1px;
                     background: #53575f;
+                    visible: !AddRevoewVisible;
                     Text {
                         text: "Release Year: ";
                         width: 150px;
@@ -510,7 +653,7 @@ slint::slint! {
                     TextInput {
                         x: 155px;
                         y: 5px;
-                        width: 500px;
+                        width: 301px;
                         height: 25px;
                         text: "Enter Release Date";
                         visible: true;
@@ -531,6 +674,7 @@ slint::slint! {
                     border-radius: 5px;
                     border-width: 1px;
                     background: #53575f;
+                    visible: !AddRevoewVisible;
                     Text {
                         text: "Format: ";
                         width: 150px;
@@ -542,7 +686,7 @@ slint::slint! {
                     TextInput {
                         x: 155px;
                         y: 5px;
-                        width: 500px;
+                        width: 293px;
                         height: 25px;
                         text: "Enter Format";
                         visible: true;
@@ -563,6 +707,7 @@ slint::slint! {
                     border-radius: 5px;
                     border-width: 1px;
                     background: #53575f;
+                    visible: !AddRevoewVisible;
                     Text {
                         text: "Description: ";
                         width: 150px;
@@ -574,8 +719,8 @@ slint::slint! {
                     TextInput {
                         x: 10px;
                         y: 30px;
-                        width: 230px;
-                        height: 190px;
+                        width: 217px;
+                        height: 175px;
                         text: "Enter Description";
                         visible: true;
                         enabled: true;
@@ -595,6 +740,7 @@ slint::slint! {
                     border-radius: 5px;
                     border-width: 1px;
                     background: #53575f;
+                    visible: !AddRevoewVisible;
                     Button {
                         text: "Add Member";
                         x: 5px;
@@ -647,7 +793,7 @@ slint::slint! {
                         TextInput {
                             x: 3px;
                             y: 0px;
-                            width: 60px;
+                            width: 53px;
                             height: 25px;
                             z:90;
                             edited => {
@@ -671,6 +817,7 @@ slint::slint! {
                             font-size: 20px;
                         }
                         TextInput {
+                            width: 56px;
                             edited => {
                                 CastAgeOUT = self.text;
                             }
@@ -693,6 +840,7 @@ slint::slint! {
                             font-size: 20px;
                         }
                         TextInput {
+                            width: 54px;
                             edited => {
                                 CastRoleOUT = self.text;
                             }
@@ -776,7 +924,10 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     let format = app.get_FormatOUT();
                     let description = app.get_DescriptionOUT();
                     let review_score = app.get_ReviewOUT();
-                    let cast_list = CAST_LIST.lock().unwrap();
+                    let mut cast_list = CAST_LIST.lock().unwrap();
+                    let mut sub_review_title = SUB_REVIEW_TITLE_LIST.lock().unwrap();
+                    let mut sub_review_desc = SUB_REVIEW_DESC_LIST.lock().unwrap();
+                    let mut sub_review_score = SUB_REVIEW_SCORE_LIST.lock().unwrap();
                     //fill in the struct that is sent to database
                     let from_gui = fill_from_gui(
                         movie_title.to_string(),
@@ -785,14 +936,18 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                         description.to_string(),
                         cast_list.clone(),
                         review_score,
-                        0,
-                        "".to_string(),
-                        "".to_string(),
+                        sub_review_title.clone().len() as i32,
+                        sub_review_title.clone(),
+                        sub_review_desc.clone(),
+                        sub_review_score.clone(),
                     );
                     //add movie to db
                     add_movie(from_gui, &pool).await;
                     populate_movie_list(app, pool).await;
                     cast_list.clear();
+                    sub_review_title.clear();
+                    sub_review_desc.clear();
+                    sub_review_score.clear();
                 }
                 "AddMemberClicked" => {
                     let mut cast_list = CAST_LIST.lock().unwrap();
@@ -817,6 +972,22 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     let movie_title = app.get_MovieTitleOUT().to_string();
                     delete_data(movie_title, &pool).await;
                     populate_movie_list(app, pool).await;
+                }
+                "AddSubReviewClicked" => {
+                    let mut sub_review_title = SUB_REVIEW_TITLE_LIST.lock().unwrap();
+                    let mut sub_review_desc = SUB_REVIEW_DESC_LIST.lock().unwrap();
+                    let mut sub_review_score = SUB_REVIEW_SCORE_LIST.lock().unwrap();
+                    sub_review_desc.push(app.get_SubReviewDescOUT().to_string());
+                    sub_review_title.push(app.get_SubReviewTitleOUT().to_string());
+                    sub_review_score.push(app.get_SubReviewScoreOUT().to_string());
+                    let mut sub_review_list = vec![];
+                    for i in 0..sub_review_title.len() {
+                        sub_review_list.push(format!(
+                            "Title: {} Desc: {} Score: {}",
+                            sub_review_title[i], sub_review_desc[i], sub_review_score[i]
+                        ));
+                    }
+                    app.set_SubReviewListIN(vec_str_to_model(sub_review_list));
                 }
                 _ => {}
             }
@@ -929,8 +1100,9 @@ fn fill_from_gui(
     cast: Vec<String>,
     aggregate: i32,
     sub_review_num: i32,
-    sub_review_title: String,
-    sub_review_desc: String,
+    sub_review_title: Vec<String>,
+    sub_review_desc: Vec<String>,
+    sub_review_score: Vec<String>,
 ) -> FromGui {
     //fill in the struct
 
@@ -958,6 +1130,43 @@ fn fill_from_gui(
         actor_role.push(cast_member_split[2].to_string());
     }
 
+    //Check to make sure sub_review_title, sub_review_desc and sub_review_score all have sub_review_num elements
+    if sub_review_title.len() != sub_review_num as usize
+        || sub_review_desc.len() != sub_review_num as usize
+        || sub_review_score.len() != sub_review_num as usize
+    {
+        println!("Error: Sub-review arrays do not have the same number of elements... Omitting sub-reviews");
+        return FromGui {
+            title: movie_title,
+            actor_name: actor_name,
+            actor_age: actor_age,
+            actor_role: actor_role,
+            aggregate: aggregate,
+            description: description,
+            format: format,
+            releaseDate: release_date,
+            sub_review_num: 0,
+            sub_review_score: Vec::new(),
+            sub_review_title: Vec::new(),
+            sub_review_desc: Vec::new(),
+        };
+    }
+
+    //parse sub_review_score to i32
+    let mut sub_review_score_int: Vec<i32> = Vec::new();
+    for i in 0..sub_review_score.len() {
+        let score: Result<i32, _> = sub_review_score[i].trim().parse();
+        if let Ok(s) = score {
+            sub_review_score_int.push(s);
+        } else {
+            println!(
+                "Error: Invalid score for sub-review: {}",
+                sub_review_score[i]
+            );
+            sub_review_score_int.push(0);
+        }
+    }
+
     FromGui {
         title: movie_title,
         actor_name: actor_name,
@@ -968,7 +1177,7 @@ fn fill_from_gui(
         format: format,
         releaseDate: release_date,
         sub_review_num: sub_review_num,
-        sub_review_score: aggregate,
+        sub_review_score: sub_review_score_int,
         sub_review_title: sub_review_title,
         sub_review_desc: sub_review_desc,
     }

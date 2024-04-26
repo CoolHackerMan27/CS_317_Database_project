@@ -59,9 +59,9 @@ pub struct FromGui {
     pub format: String,
     pub releaseDate: i32,
     pub sub_review_num: i32,
-    pub sub_review_score: i32,
-    pub sub_review_title: String,
-    pub sub_review_desc: String,
+    pub sub_review_score: Vec<i32>,
+    pub sub_review_title: Vec<String>,
+    pub sub_review_desc: Vec<String>,
 }
 
 #[derive(sqlx::FromRow, Clone)]

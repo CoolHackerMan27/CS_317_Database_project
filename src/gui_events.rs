@@ -94,31 +94,64 @@ pub async fn add_movie(movie: FromGui, pool: &MySqlPool) {
     match crate::db::add(query, pool).await {
         Ok(_) => {
             println!("Movie added successfully");
+            //Add Cast Members
+            let mut castId = 0;
+            for i in 0..movie.actor_name.len() {
+                castId = crate::db::get_max_cast_id(pool)
+                    .await
+                    .unwrap()
+                    .castId
+                    .unwrap()
+                    + 1;
+                let actor_name = movie.actor_name.get(i).unwrap();
+                let actor_age = movie.actor_age.get(i).unwrap();
+                let actor_role = movie.actor_role.get(i).unwrap();
+                let query = format!("INSERT INTO CastMembers (castId, movieId, age, name, role, mis) VALUES ({}, {}, '{:?}', '{:?}', '{:?}', '{}')", castId, movieId, actor_age, actor_name, actor_role, "".to_string());
+                match crate::db::add(query, pool).await {
+                    Ok(_) => {
+                        println!("Cast Member added successfully");
+                    }
+                    Err(e) => {
+                        println!("Error: {}", e);
+                    }
+                }
+            }
+            //Add Review
+            let reviewID = crate::db::get_max_review_id(pool).await.unwrap() + 1;
+            let query = format!(
+        "INSERT INTO Review (reviewID, aggregate, sub_review_num, movieId) VALUES ({}, {}, {}, {})",
+        reviewID, movie.aggregate, movie.sub_review_num, movieId
+    );
+            match crate::db::add(query, pool).await {
+                Ok(_) => {
+                    println!("Review added successfully");
+                }
+                Err(e) => {
+                    println!("Error: {}", e);
+                }
+            }
+            //Add Sub Reviews
+            if movie.sub_review_num > 0 {
+                let mut sub_review_id = crate::db::get_max_sub_review_id(pool).await.unwrap() + 1;
+                for i in 0..movie.sub_review_num {
+                    let query = format!(
+                "INSERT INTO Sub_Review (reviewID, subreviewID, sub_review_title, sub_review_score, sub_review_desc) VALUES ({}, {}, '{}', '{}', '{}')",
+                reviewID, sub_review_id, movie.sub_review_title.get(i as usize).unwrap(), movie.sub_review_score.get(i as usize).unwrap(), movie.sub_review_desc.get(i as usize).unwrap()
+            );
+                    sub_review_id += 1;
+                    match crate::db::add(query, pool).await {
+                        Ok(_) => {
+                            println!("Sub Review added successfully");
+                        }
+                        Err(e) => {
+                            println!("Error: {}", e);
+                        }
+                    }
+                }
+            }
         }
         Err(e) => {
             println!("Error: {}", e);
-        }
-    }
-    //Add Cast Members
-    let mut castId = 0;
-    for i in 0..movie.actor_name.len() {
-        castId = crate::db::get_max_cast_id(pool)
-            .await
-            .unwrap()
-            .castId
-            .unwrap()
-            + 1;
-        let actor_name = movie.actor_name.get(i).unwrap();
-        let actor_age = movie.actor_age.get(i).unwrap();
-        let actor_role = movie.actor_role.get(i).unwrap();
-        let query = format!("INSERT INTO CastMembers (castId, movieId, age, name, role, mis) VALUES ({}, {}, '{:?}', '{:?}', '{:?}', '{}')", castId, movieId, actor_age, actor_name, actor_role, "".to_string());
-        match crate::db::add(query, pool).await {
-            Ok(_) => {
-                println!("Cast Member added successfully");
-            }
-            Err(e) => {
-                println!("Error: {}", e);
-            }
         }
     }
 }

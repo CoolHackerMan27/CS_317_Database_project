@@ -24,6 +24,19 @@ pub async fn establish_connection() -> Result<MySqlPool, sqlx::Error> {
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     MySqlPool::connect(&database_url).await
 }
+pub async fn get_max_review_id(pool: &MySqlPool) -> Result<i32, sqlx::Error> {
+    let record = sqlx::query_scalar("SELECT MAX(reviewID) as reviewID FROM Review")
+        .fetch_one(pool)
+        .await?;
+    Ok(record)
+}
+
+pub async fn get_max_sub_review_id(pool: &MySqlPool) -> Result<i32, sqlx::Error> {
+    let record = sqlx::query_scalar("SELECT MAX(subreviewID) as subreviewID FROM Sub_Review")
+        .fetch_one(pool)
+        .await?;
+    Ok(record)
+}
 
 pub async fn get_all(pool: &MySqlPool) -> Result<Vec<Record>, sqlx::Error> {
     // Example implementation, adjust the query as needed
@@ -106,21 +119,21 @@ pub async fn remove_movie_by_id(pool: &MySqlPool, movie_id: i32) -> Result<(), s
         .execute(pool)
         .await?;
 
-    // Delete related records from the Review table
-    let review_ids: Vec<i32> = sqlx::query_scalar("SELECT reviewID FROM Review WHERE movieId = ?")
+    //Get reviewID assiocated with movieID
+    let row = sqlx::query("SELECT reviewID FROM Review WHERE movieId = ?")
         .bind(movie_id)
-        .fetch_all(pool)
+        .fetch_optional(pool)
         .await?;
 
-    sqlx::query("DELETE FROM Review WHERE movieId = ?")
-        .bind(movie_id)
-        .execute(pool)
-        .await?;
-
-    // Delete related records from the Sub_Review table
-    for review_id in review_ids {
+    if let Some(row) = row {
+        let review_id: i32 = row.get(0);
+        // Delete related records from the Sub_Review table
         sqlx::query("DELETE FROM Sub_Review WHERE reviewID = ?")
             .bind(review_id)
+            .execute(pool)
+            .await?;
+        sqlx::query("DELETE FROM Review WHERE movieId = ?")
+            .bind(movie_id)
             .execute(pool)
             .await?;
     }
