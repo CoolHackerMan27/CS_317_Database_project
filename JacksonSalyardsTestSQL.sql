@@ -1,3 +1,4 @@
+
 CREATE TABLE Movie (
   movieId INT PRIMARY KEY,
   title VARCHAR(500),
