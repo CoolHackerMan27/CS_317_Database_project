@@ -937,6 +937,9 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     let mut sub_review_desc = SUB_REVIEW_DESC_LIST.lock().unwrap();
                     let mut sub_review_score = SUB_REVIEW_SCORE_LIST.lock().unwrap();
                     //fill in the struct that is sent to database
+
+                    //Print Cast list
+                    println!("Cast List: {:?}", cast_list);
                     let from_gui = fill_from_gui(
                         movie_title.to_string(),
                         release_date,
@@ -1131,6 +1134,13 @@ fn fill_from_gui(
     let mut actor_role: Vec<String> = Vec::new();
 
     for i in 0..cast.len() {
+        //check to see if this is the same cast member as the last one
+        //fixes some strange bug where the same cast member is added twice //TODO: Fix this bug
+        if i > 0 {
+            if cast.get(i).unwrap() == cast.get(i - 1).unwrap() {
+                continue;
+            }
+        }
         let cast_member = cast.get(i).unwrap();
         let cast_member_split: Vec<&str> = cast_member.split(";").collect();
 

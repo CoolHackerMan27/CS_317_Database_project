@@ -4,7 +4,7 @@ pub mod gui_events;
 pub mod record;
 
 use gui_events::ToGui;
-use record::{MovieList};
+use record::MovieList;
 use slint::{Model, ModelExt, ModelRc, SharedString, VecModel};
 use std::{
     borrow::Borrow,
