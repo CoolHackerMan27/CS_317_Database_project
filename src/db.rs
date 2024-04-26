@@ -1,3 +1,4 @@
+use crate::record::CastId;
 use crate::record::CastMovieRecord;
 use crate::record::MicroReview;
 use crate::record::MovieId;
@@ -5,7 +6,6 @@ use crate::record::MovieList;
 use crate::record::Record;
 use crate::record::Review;
 use crate::record::SubReview;
-
 use sqlx;
 
 use sqlx::MySqlPool;
@@ -23,6 +23,19 @@ pub async fn establish_connection() -> Result<MySqlPool, sqlx::Error> {
     dotenv::dotenv().ok();
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     MySqlPool::connect(&database_url).await
+}
+pub async fn get_max_review_id(pool: &MySqlPool) -> Result<i32, sqlx::Error> {
+    let record = sqlx::query_scalar("SELECT MAX(reviewID) as reviewID FROM Review")
+        .fetch_one(pool)
+        .await?;
+    Ok(record)
+}
+
+pub async fn get_max_sub_review_id(pool: &MySqlPool) -> Result<i32, sqlx::Error> {
+    let record = sqlx::query_scalar("SELECT MAX(subreviewID) as subreviewID FROM Sub_Review")
+        .fetch_one(pool)
+        .await?;
+    Ok(record)
 }
 
 pub async fn get_all(pool: &MySqlPool) -> Result<Vec<Record>, sqlx::Error> {
@@ -80,18 +93,58 @@ pub async fn filter_by_title(
     Ok(records)
 }
 
-async fn filter_by_actor(pool: &MySqlPool, name: String) -> Result<Vec<MovieList>, sqlx::Error> {
+pub async fn filter_by_actor(
+    pool: &MySqlPool,
+    name: String,
+) -> Result<Vec<MovieList>, sqlx::Error> {
+    let name = name.to_lowercase();
     let records: Vec<MovieList> = sqlx::query_as!(
         MovieList,
-        "SELECT title, m.movieId
+        "SELECT c.movieId, m.title AS title
         FROM CastMembers c
-        JOIN Movie m ON m.movieId = c.movieId
-        WHERE c.name = ?",
-        name
+        JOIN Movie m ON c.movieId = m.movieId
+        WHERE c.name LIKE ?",
+        format!("%{}%", name),
     )
     .fetch_all(pool)
     .await?;
+
     Ok(records)
+}
+
+pub async fn remove_movie_by_id(pool: &MySqlPool, movie_id: i32) -> Result<(), sqlx::Error> {
+    // First, delete related records from the CastMembers table
+    sqlx::query("DELETE FROM CastMembers WHERE movieId = ?")
+        .bind(movie_id)
+        .execute(pool)
+        .await?;
+
+    //Get reviewID assiocated with movieID
+    let row = sqlx::query("SELECT reviewID FROM Review WHERE movieId = ?")
+        .bind(movie_id)
+        .fetch_optional(pool)
+        .await?;
+
+    if let Some(row) = row {
+        let review_id: i32 = row.get(0);
+        // Delete related records from the Sub_Review table
+        sqlx::query("DELETE FROM Sub_Review WHERE reviewID = ?")
+            .bind(review_id)
+            .execute(pool)
+            .await?;
+        sqlx::query("DELETE FROM Review WHERE movieId = ?")
+            .bind(movie_id)
+            .execute(pool)
+            .await?;
+    }
+
+    // Finally, delete the movie record from the Movie table
+    sqlx::query("DELETE FROM Movie WHERE movieId = ?")
+        .bind(movie_id)
+        .execute(pool)
+        .await?;
+
+    Ok(())
 }
 
 pub async fn filter_by_release(
@@ -121,6 +174,24 @@ pub async fn filter_by_format(
     .await?;
 
     Ok(records)
+}
+pub async fn get_max_movie_id(pool: &MySqlPool) -> Result<MovieId, sqlx::Error> {
+    let record = sqlx::query_as!(MovieId, "SELECT MAX(movieId) as movieId FROM Movie")
+        .fetch_one(pool)
+        .await?;
+    Ok(record)
+}
+
+pub async fn get_max_cast_id(pool: &MySqlPool) -> Result<CastId, sqlx::Error> {
+    let record = sqlx::query_as!(CastId, "SELECT MAX(castID) as castId FROM CastMembers")
+        .fetch_one(pool)
+        .await?;
+    Ok(record)
+}
+
+pub async fn add(query: String, pool: &MySqlPool) -> Result<(), sqlx::Error> {
+    sqlx::query(&query).execute(pool).await?;
+    Ok(())
 }
 
 pub async fn filter_by_rating(

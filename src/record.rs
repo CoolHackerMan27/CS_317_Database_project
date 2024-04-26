@@ -12,7 +12,7 @@ pub struct CastMovieRecord {
     pub movieId: Option<i32>,
     pub movie_title: Option<String>,
     pub actor_name: Option<String>,
-    pub actor_age: Option<i32>, // Change this line
+    pub actor_age: Option<i32>,
     pub actor_role: Option<String>,
 }
 
@@ -49,7 +49,25 @@ pub struct MovieList {
     pub title: Option<String>,
 }
 
+pub struct FromGui {
+    pub actor_name: Vec<String>,
+    pub actor_age: Vec<i32>,
+    pub actor_role: Vec<String>,
+    pub aggregate: i32,
+    pub title: String,
+    pub description: String,
+    pub format: String,
+    pub releaseDate: i32,
+    pub sub_review_num: i32,
+    pub sub_review_score: Vec<i32>,
+    pub sub_review_title: Vec<String>,
+    pub sub_review_desc: Vec<String>,
+}
+
 #[derive(sqlx::FromRow, Clone)]
 pub struct MovieId {
     pub movieId: Option<i32>,
+}
+pub struct CastId {
+    pub castId: Option<i32>,
 }
