@@ -1,4 +1,4 @@
-use std::string;
+
 
 use sqlx::MySqlPool;
 
@@ -125,28 +125,28 @@ pub async fn add_movie(movie: FromGui, pool: &MySqlPool) {
             match crate::db::add(query, pool).await {
                 Ok(_) => {
                     println!("Review added successfully");
+                    if movie.sub_review_num > 0 {
+                        let mut sub_review_id =
+                            crate::db::get_max_sub_review_id(pool).await.unwrap() + 1;
+                        for i in 0..movie.sub_review_num {
+                            let query = format!(
+                            "INSERT INTO Sub_Review (reviewID, subreviewID, sub_review_title, sub_review_score, sub_review_desc) VALUES ({}, {}, '{}', '{}', '{}')",
+                            reviewID, sub_review_id, movie.sub_review_title.get(i as usize).unwrap(), movie.sub_review_score.get(i as usize).unwrap(), movie.sub_review_desc.get(i as usize).unwrap()
+                            );
+                            sub_review_id += 1;
+                            match crate::db::add(query, pool).await {
+                                Ok(_) => {
+                                    println!("Sub Review added successfully");
+                                }
+                                Err(e) => {
+                                    println!("Error: {}", e);
+                                }
+                            }
+                        }
+                    }
                 }
                 Err(e) => {
                     println!("Error: {}", e);
-                }
-            }
-            //Add Sub Reviews
-            if movie.sub_review_num > 0 {
-                let mut sub_review_id = crate::db::get_max_sub_review_id(pool).await.unwrap() + 1;
-                for i in 0..movie.sub_review_num {
-                    let query = format!(
-                "INSERT INTO Sub_Review (reviewID, subreviewID, sub_review_title, sub_review_score, sub_review_desc) VALUES ({}, {}, '{}', '{}', '{}')",
-                reviewID, sub_review_id, movie.sub_review_title.get(i as usize).unwrap(), movie.sub_review_score.get(i as usize).unwrap(), movie.sub_review_desc.get(i as usize).unwrap()
-            );
-                    sub_review_id += 1;
-                    match crate::db::add(query, pool).await {
-                        Ok(_) => {
-                            println!("Sub Review added successfully");
-                        }
-                        Err(e) => {
-                            println!("Error: {}", e);
-                        }
-                    }
                 }
             }
         }

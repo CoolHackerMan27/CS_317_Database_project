@@ -26,18 +26,22 @@ static SUB_REVIEW_TITLE_LIST: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new
 slint::slint! {
     import { Button, ListView, ScrollView, GridBox, Slider, ComboBox, CheckBox, Switch, StandardTableView, TabWidget} from "std-widgets.slint";
     export component MainGui inherits Window{
+        //theme
+        BasicColor: #1a2646;
+        //visibility of the components
         InitButtonVisible: true;
         AllOtherVisible: true;
         ResetVisible: false;
         MovieDetailsVisible: false;
-        BasicColor: #1a2646;
         DialogVisible: false;
-        NumOfCastMembers: 1;
         AddRevoewVisible: false;
+        // Movie Details
+        NumOfCastMembers: 1;
         //size of the window
         width: 800px;
         height: 790px;
         title: "Movie Database";
+        //properties
         in property <[string]> MovieList;
         in property <[string]> SubReviewList;
         in property <color> BasicColor;
@@ -72,7 +76,9 @@ slint::slint! {
         out property <bool> MovieDetailsVisible;
         out property <int> NumOfCastMembers;
         out property <bool> AddRevoewVisible;
+        //Callbacks
         callback eventOccured();
+        //Components
         ComboBox {
             height: 27px;
             width: 102px;
@@ -1043,7 +1049,6 @@ async fn search_by_filters(filter: String, search_term: String, app: MainGui, po
         }
         "Actor-Name" => {
             let search_term = search_term.to_string();
-            println!("Actor-Name: {}", search_term);
             let movie_list = filter_by_actor(&pool, search_term).await;
             let model = parse_movie_list(movie_list);
             app.set_MovieList(model);
@@ -1103,7 +1108,6 @@ async fn populate_movie_list(app: MainGui, pool: MySqlPool) {
 async fn populate_sub_review_list(app: MainGui, pool: MySqlPool, review_id: i32) {
     let result = get_sub_review_list(&pool, review_id).await;
     let model = parse_result(result);
-    print!("SubReviewList: {:?}", model);
     app.set_SubReviewList(model);
 }
 
