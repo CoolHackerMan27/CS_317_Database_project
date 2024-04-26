@@ -411,6 +411,7 @@ slint::slint! {
                     z:99;
                     clicked => {
                         DialogVisible = false;
+                        AddRevoewVisible = false;
                     }
                 }
                 Button {
@@ -561,6 +562,7 @@ slint::slint! {
                     clicked => {
                         self.visible = true;
                         DialogVisible = false;
+                        AddRevoewVisible = false;
                         eventOccured();
                         Event = "SubmitButtonClicked";
                         // Reset the Default values
@@ -931,7 +933,7 @@ async fn gui_loop(app: MainGui, pool: MySqlPool) {
                     //fill in the struct that is sent to database
                     let from_gui = fill_from_gui(
                         movie_title.to_string(),
-                        release_date.to_string().parse().unwrap(),
+                        release_date,
                         format.to_string(),
                         description.to_string(),
                         cast_list.clone(),
@@ -1010,7 +1012,14 @@ async fn search_by_filters(filter: String, search_term: String, app: MainGui, po
             app.set_MovieList(model);
         }
         "Release-Date" => {
-            let search_term_int = search_term.parse::<i32>().unwrap(); // Convert search_term to i32
+            // Handle error if search_term is not a number
+            let search_term_int = match search_term.parse::<i32>() {
+                Ok(num) => num,
+                Err(_) => {
+                    println!("Invalid search term, must be a number");
+                    return;
+                }
+            };
             let movie_list = filter_by_release(&pool, search_term_int).await;
             let model = parse_movie_list(movie_list);
             app.set_MovieList(model);
@@ -1021,7 +1030,13 @@ async fn search_by_filters(filter: String, search_term: String, app: MainGui, po
             app.set_MovieList(model);
         }
         "Rating" => {
-            let search_term_int = search_term.parse::<i32>().unwrap(); // Convert search_term to i32
+            let search_term_int = match search_term.parse::<i32>() {
+                Ok(num) => num,
+                Err(_) => {
+                    println!("Invalid search term, must be a number");
+                    return;
+                }
+            };
             let movie_list = filter_by_rating(&pool, search_term_int).await;
             let model = parse_movie_list(movie_list);
             app.set_MovieList(model);
